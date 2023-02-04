@@ -52,11 +52,6 @@ export const main = async () => {
 
     console.log('Should be wikipedia: ', findClosestWord(await model.embed(['Wikipedia']), corpus));
 
-    const text = readFileSync("data/wiki-horse.txt").toString();
-
-    // Embed an array of sentences.
-    const sentences = text.split('.').slice(0,100);
-
     console.log('Building embeddings');
 
     model.embed(['test']).then(embeddings => {
@@ -66,29 +61,36 @@ export const main = async () => {
         embeddings.print(true /* verbose */);
     });
 
-    const wordDecodeModel: Sequential = tf.sequential();
-    const HIDDEN_SIZE = 2;
+    const wordPredictModel: Sequential = tf.sequential();
+    const HIDDEN_SIZE = 500;
 
-    wordDecodeModel.add(
+    wordPredictModel.add(
         tf.layers.dense({
-            inputShape: EMBED_SHAPE,
+            inputShape: [EMBED_SHAPE[1]],
             units: HIDDEN_SIZE,
             activation: "tanh",
         })
     );
 
-    wordDecodeModel.add(
+    wordPredictModel.add(
         tf.layers.dense({
             units: HIDDEN_SIZE,
             activation: "tanh",
         })
     );
 
-    wordDecodeModel.summary();
+    wordPredictModel.add(
+        tf.layers.dense({
+            units: EMBED_SHAPE[1],
+            activation: "tanh",
+        })
+    );
+
+    wordPredictModel.summary();
 
     const ALPHA = 0.001
     console.log('Compiling word decoding model.');
-    wordDecodeModel.compile({
+    wordPredictModel.compile({
         optimizer: tf.train.sgd(ALPHA),
         loss: "meanSquaredError",
     })
@@ -96,18 +98,52 @@ export const main = async () => {
 
     console.log('Training word decoding model.');
 
+    // First, as an experiment
+    // Lets create a training dataset of n-grams and the expected next word
+    const buildTrainingData = async () => {
+        const text = readFileSync("data/wiki-horse.txt").toString().toLocaleLowerCase();
+        // Embed an array of sentences.
+        const words = text.split(/[ \n]/).slice(0,1000).filter(v => v !== '');
+        const bigrams = [];
+        const expectedOutputs = [];
 
+        for (let i = 0; i < words.length - 2; i++) {
+            bigrams.push(words[i] + ' ' + words[i + 1]);
+            // Predict the 3rd word based on previous words.
+            expectedOutputs.push(words[i+2]);
+        }
 
-    // await model.fit(input, expectedOutput, {
-    //     epochs: 200,
-    //     callbacks: {
-    //         onEpochEnd: async (epoch, logs) => {
-    //             if (epoch % 10 === 0) {
-    //                 console.log(`Epoch ${epoch}: error: ${logs.loss}`)
-    //             }
-    //         },
-    //     },
-    // });
+        const wordTensors = await model.embed(bigrams);
+
+        return {
+            wordTensors,
+            expectedOutputs: await model.embed(expectedOutputs)
+        };
+    }
+
+    const {
+        wordTensors,
+        expectedOutputs
+    } = await buildTrainingData();
+
+    console.log({
+        wordTensors,
+        expectedOutputs
+    });
+
+    await wordPredictModel.fit(wordTensors, expectedOutputs, {
+        epochs: 200,
+        callbacks: {
+            onEpochEnd: async (epoch, logs) => {
+                if (epoch % 10 === 0) {
+                    console.log(`Epoch ${epoch}: error: ${logs.loss}`)
+                }
+            },
+        },
+    });
+
+    const prediction = wordPredictModel.predict(await model.embed("horse")) as Tensor2D;
+    console.log({ before: "horse", prediction: findClosestWord(prediction, corpus) });
     console.log('Done!');
 
 };
