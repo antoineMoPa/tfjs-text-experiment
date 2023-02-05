@@ -1,7 +1,6 @@
 import { readFileSync } from 'fs';
 import type { Tensor2D } from '@tensorflow/tfjs-core/dist/tensor';
 import type { Sequential } from '@tensorflow/tfjs-layers/dist/models';
-import type { UniversalSentenceEncoder } from  '@tensorflow-models/universal-sentence-encoder';
 import * as tf from '@tensorflow/tfjs-node';
 import * as _ from 'lodash';
 import { performance } from 'perf_hooks';
