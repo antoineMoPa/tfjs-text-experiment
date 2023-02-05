@@ -5,9 +5,10 @@ import type { UniversalSentenceEncoder } from  '@tensorflow-models/universal-sen
 import * as tf from '@tensorflow/tfjs-node';
 import * as _ from 'lodash';
 import { performance } from 'perf_hooks';
+import { LayersModel } from '@tensorflow/tfjs-node';
 
 const EMBED_SHAPE = [1, 512];
-
+const scentenceEncoderModel = global.universalSentenceEncoderModel;
 
 type Corpus = {
     wordTensors: Tensor2D;
@@ -17,10 +18,9 @@ type Corpus = {
 async function buildCorpus() {
     console.log('Building corpus');
     const t1 = performance.now();
-    const model = global.universalSentenceEncoderModel;
     const text = readFileSync("data/wiki-horse.txt").toString().toLowerCase();
-    const words = _.uniq(text.split(/\s/)).slice(0,1000);
-    const wordTensors = await model.embed(words);
+    const words = _.uniq(text.split(/\s/));
+    const wordTensors = await scentenceEncoderModel.embed(words);
 
     const t2 = performance.now();
     console.log(`Done! (in ${(t2 - t1).toFixed(0)} ms)`);
@@ -45,16 +45,15 @@ function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
     return corpus.words[closest];
 }
 
-export const main = async () => {
-    const model: UniversalSentenceEncoder = global.universalSentenceEncoderModel;
+async function buildModel() {
     const corpus = await buildCorpus();
     console.log(corpus.words);
 
-    console.log('Should be wikipedia: ', findClosestWord(await model.embed(['Wikipedia']), corpus));
+    console.log('Should be wikipedia: ', findClosestWord(await scentenceEncoderModel.embed(['Wikipedia']), corpus));
 
     console.log('Building embeddings');
 
-    model.embed(['test']).then(embeddings => {
+    scentenceEncoderModel.embed(['test']).then(embeddings => {
         console.log(embeddings.shape);
         // `embeddings` is a 2D tensor consisting of the 512-dimensional embeddings for each sentence.
         // So in this example `embeddings` has the shape [2, 512].
@@ -62,7 +61,7 @@ export const main = async () => {
     });
 
     const wordPredictModel: Sequential = tf.sequential();
-    const HIDDEN_SIZE = 500;
+    const HIDDEN_SIZE = 1000;
 
     wordPredictModel.add(
         tf.layers.dense({
@@ -88,7 +87,7 @@ export const main = async () => {
 
     wordPredictModel.summary();
 
-    const ALPHA = 0.001
+    const ALPHA = 0.1;
     console.log('Compiling word decoding model.');
     wordPredictModel.compile({
         optimizer: tf.train.sgd(ALPHA),
@@ -103,21 +102,22 @@ export const main = async () => {
     const buildTrainingData = async () => {
         const text = readFileSync("data/wiki-horse.txt").toString().toLocaleLowerCase();
         // Embed an array of sentences.
-        const words = text.split(/[ \n]/).slice(0,1000).filter(v => v !== '');
-        const bigrams = [];
+        const words = text.split(/[ \n]/).filter(v => v !== '');
+        const ngrams = [];
         const expectedOutputs = [];
+        const beforeSize = 1;
 
-        for (let i = 0; i < words.length - 2; i++) {
-            bigrams.push(words[i] + ' ' + words[i + 1]);
-            // Predict the 3rd word based on previous words.
-            expectedOutputs.push(words[i+2]);
+        for (let i = 0; i < words.length - beforeSize; i++) {
+            ngrams.push(words.slice(i, i + beforeSize).join(' '));
+            // We want to predict the next word based on previous words.
+            expectedOutputs.push(words[i + beforeSize]);
         }
 
-        const wordTensors = await model.embed(bigrams);
+        const wordTensors = await scentenceEncoderModel.embed(ngrams);
 
         return {
             wordTensors,
-            expectedOutputs: await model.embed(expectedOutputs)
+            expectedOutputs: await scentenceEncoderModel.embed(expectedOutputs)
         };
     }
 
@@ -132,7 +132,7 @@ export const main = async () => {
     });
 
     await wordPredictModel.fit(wordTensors, expectedOutputs, {
-        epochs: 200,
+        epochs: 100,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
                 if (epoch % 10 === 0) {
@@ -142,8 +142,33 @@ export const main = async () => {
         },
     });
 
-    const prediction = wordPredictModel.predict(await model.embed("horse")) as Tensor2D;
-    console.log({ before: "horse", prediction: findClosestWord(prediction, corpus) });
-    console.log('Done!');
+    await wordPredictModel.save('file://wordPredictModel');
+    return wordPredictModel;
+}
 
+async function getModel() {
+    try {
+        const wordPredictModel = await tf.loadLayersModel('file://wordPredictModel/model.json');
+        return wordPredictModel;
+    } catch (e) {
+        console.log(e);
+        console.log('Model not found/has error. Generating')
+    }
+
+    return buildModel();
+}
+
+export const main = async () => {
+    const corpus = await buildCorpus();
+    const wordPredictModel = await getModel() as LayersModel;
+
+    // Test model
+    let str = "A 2021 genetic study";
+    for (let i = 0; i < 10; i++) {
+        const last5 = str.toLowerCase().split(' ').slice(-1);
+        const prediction = wordPredictModel.predict(await scentenceEncoderModel.embed(last5.join(' '))) as Tensor2D;
+        str += ' ' + findClosestWord(prediction, corpus);
+    }
+
+    console.log(str);
 };
