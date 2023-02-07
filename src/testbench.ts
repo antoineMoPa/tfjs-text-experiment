@@ -1,3 +1,7 @@
+// Source map support. Does this work?
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('source-map-support').install();
+
 // Test bench deps
 import { execSync } from 'child_process';
 import { watch } from 'chokidar';
@@ -16,10 +20,11 @@ tf.ready().then(() => {
 
             execSync('yarn run build');
 
-            delete require.cache[require.resolve('./index.js')];
+            const ENTRYPOINT = './tinygpt.js';
+            delete require.cache[require.resolve(ENTRYPOINT)];
             try {
                 // eslint-disable-next-line @typescript-eslint/no-var-requires
-                require('./index.js').main();
+                require(ENTRYPOINT).main();
             } catch (e) {
                 console.error(e);
             }

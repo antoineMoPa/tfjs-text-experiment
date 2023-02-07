@@ -2,3 +2,5 @@ dist
 node_modules
 *.log
 wordPredictModel
+data/data-corpus.txt
+data/trainingData.json
