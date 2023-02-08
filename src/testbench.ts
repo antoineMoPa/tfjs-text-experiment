@@ -9,7 +9,7 @@ import { watch } from 'chokidar';
 // Slow loading deps
 import { load as loadUniversalSentenceEncoder } from '@tensorflow-models/universal-sentence-encoder';
 
-import * as tf from '@tensorflow/tfjs-node';
+import * as tf from '@tensorflow/tfjs-node-gpu';
 
 tf.ready().then(() => {
     loadUniversalSentenceEncoder().then(model => {

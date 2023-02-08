@@ -2,10 +2,11 @@ import { readFileSync, existsSync, createWriteStream, createReadStream } from 'f
 import type { Tensor2D } from '@tensorflow/tfjs-core/dist/tensor';
 import type { Sequential } from '@tensorflow/tfjs-layers/dist/models';
 import type { UniversalSentenceEncoder } from  '@tensorflow-models/universal-sentence-encoder';
-import * as tf from '@tensorflow/tfjs-node';
+import * as tf from '@tensorflow/tfjs-node-gpu';
+
 import * as _ from 'lodash';
 import { performance } from 'perf_hooks';
-import { LayersModel } from '@tensorflow/tfjs-node';
+import { LayersModel } from '@tensorflow/tfjs-node-gpu';
 import * as json from 'big-json';
 import * as assert from 'node:assert';
 import * as WordPOS from 'wordpos';
@@ -152,7 +153,7 @@ function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
 }
 
 async function buildModel() {
-    const EPOCHS = 100;
+    const EPOCHS = 4;
     const ALPHA = 0.0015;
 
     const corpus = await buildCorpus();
