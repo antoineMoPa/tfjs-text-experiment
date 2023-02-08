@@ -153,7 +153,7 @@ function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
 }
 
 async function buildModel() {
-    const EPOCHS = 4;
+    const EPOCHS = 100;
     const ALPHA = 0.0015;
 
     const corpus = await buildCorpus();
@@ -163,8 +163,8 @@ async function buildModel() {
     console.log('Building embeddings');
 
     const wordPredictModel: Sequential = tf.sequential();
-
-    const HIDDEN_SCALE = 2500;
+    const OUTPUT_WORD_COUNT = 1;
+    const HIDDEN_SCALE = EMBED_SHAPE[1] * (BEFORE_SIZE + OUTPUT_WORD_COUNT);
 
     wordPredictModel.add(
         tf.layers.dense({
