@@ -18,7 +18,7 @@ tf.ready().then(() => {
         const buildAndRun = () => {
             console.log('Building and running');
 
-            execSync('yarn run build');
+            execSync('npm run build');
 
             const ENTRYPOINT = './tinygpt.js';
             delete require.cache[require.resolve(ENTRYPOINT)];

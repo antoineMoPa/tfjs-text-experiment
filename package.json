@@ -7,13 +7,13 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc src/*.ts --outDir dist",
-        "testbench": "rm -rf dist/* && yarn run lint && yarn run build && node dist/testbench.js",
-        "testbench:debug": "rm -rf dist/* && yarn run lint && yarn run build && node debug dist/testbench.js",
-        "test": "rm -rf dist/* && yarn run lint && yarn run build && node dist/tinyindex.js",
+        "testbench": "rm -rf dist/* && npm run lint && npm run build && node dist/testbench.js",
+        "testbench:debug": "rm -rf dist/* && npm run lint && npm run build && node debug dist/testbench.js",
+        "test": "rm -rf dist/* && npm run lint && npm run build && node dist/tinyindex.js",
         "lint": "eslint . --ext .ts",
         "purgeTrainingData": "rm -rf data/trainingData.json",
         "purgeModel": "rm -rf data/wordPredictModel",
-        "purge": "yarn run purgeTrainingData && yarn run purgeModel",
+        "purge": "npm run purgeTrainingData && npm run purgeModel",
         "buildCorpus": "node dist/buildCorpus.js",
         "tfjs:fix": "npm rebuild @tensorflow/tfjs-node --build-addon-from-source"
     },
