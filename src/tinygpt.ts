@@ -153,7 +153,6 @@ function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
 
 async function buildModel() {
     const EPOCHS = 100;
-    const ALPHA = 0.0015;
 
     const corpus = await buildCorpus();
 
@@ -229,8 +228,8 @@ async function buildModel() {
 
     console.log('Compiling word prediction model.');
     wordPredictModel.compile({
-        optimizer: tf.train.sgd(ALPHA),
-        loss: "meanSquaredError",
+        optimizer: tf.train.adam(),
+        loss: 'binaryCrossentropy',
     })
     console.log('Done!');
 
