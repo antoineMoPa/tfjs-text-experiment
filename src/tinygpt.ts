@@ -12,11 +12,8 @@ import * as WordPOS from 'wordpos';
 
 const EMBED_SHAPE = [1, 512];
 const BEFORE_SIZE = 5;
-const HIDDEN_SIZE = 20;
 const CORPUS_PATH = "data/data-corpus.txt";
 const scentenceEncoderModel: UniversalSentenceEncoder = global.universalSentenceEncoderModel;
-const EPOCHS = 1000;
-const ALPHA = 0.001;
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 const wordpos = new WordPOS({ stopwords: false });
 
@@ -30,7 +27,6 @@ async function buildCorpus() {
     const t1 = performance.now();
     const text = readFileSync(CORPUS_PATH).toString();
     const words: string[] = _.uniq(wordpos.parse(text));
-    console.log(words);
     const wordTensors = await scentenceEncoderModel.embed(words);
 
     const t2 = performance.now();
@@ -156,6 +152,9 @@ function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
 }
 
 async function buildModel() {
+    const EPOCHS = 100;
+    const ALPHA = 0.0015;
+
     const corpus = await buildCorpus();
 
     assert.equal(findClosestWord(await embedWord('horse'), corpus).indexOf('horse'), 0);
@@ -164,25 +163,65 @@ async function buildModel() {
 
     const wordPredictModel: Sequential = tf.sequential();
 
+    const HIDDEN_SCALE = 2500;
+
     wordPredictModel.add(
         tf.layers.dense({
             inputShape: [EMBED_SHAPE[1] * 5],
-            units: HIDDEN_SIZE,
-            activation: "tanh",
+            units: HIDDEN_SCALE,
+            activation: "softmax",
+        })
+    );
+
+    wordPredictModel.add(
+        tf.layers.dropout({
+            rate: 0.5
         })
     );
 
     wordPredictModel.add(
         tf.layers.dense({
-            units: HIDDEN_SIZE,
-            activation: "tanh",
+            units: HIDDEN_SCALE,
+            activation: "softmax",
         })
     );
+
+    wordPredictModel.add(
+        tf.layers.dropout({
+            rate: 0.5
+        })
+    );
+
+    wordPredictModel.add(
+        tf.layers.dropout({
+            rate: 0.5
+        })
+    );
+
+    wordPredictModel.add(
+        tf.layers.layerNormalization({})
+    );
+
+
+    wordPredictModel.add(
+        tf.layers.dense({
+            units: HIDDEN_SCALE,
+            activation: "linear",
+        })
+    );
+
+    wordPredictModel.add(
+        tf.layers.dense({
+            units: HIDDEN_SCALE,
+            activation: "softmax",
+        })
+    );
+
 
     wordPredictModel.add(
         tf.layers.dense({
             units: EMBED_SHAPE[1],
-            activation: "tanh",
+            activation: "elu",
         })
     );
 
@@ -239,16 +278,14 @@ export const main = async () => {
 
     // Test model
     const originalString = "The height of horses is measured";
-    let str = originalString;
+    const words = wordpos.parse(originalString);
     for (let i = 0; i < 10; i++) {
-        const last5 = str.split(' ').slice(-BEFORE_SIZE);
-
+        const last5 = words.slice(-BEFORE_SIZE);
         const wordTensors = await words2Input(last5);
-
         const prediction = wordPredictModel.predict(wordTensors) as Tensor2D;
-        str += ' ' + findClosestWord(prediction, corpus);
+        words.push(findClosestWord(prediction, corpus));
     }
 
     console.log(`Original string:  ${originalString}`);
-    console.log(`Completed string: ${str}`);
+    console.log(`Completed string: ${words.join(' ')}`);
 };
