@@ -22,7 +22,7 @@ type Vocabulary = {
     words: string[];
 };
 
-async function buildVocabulary() {
+async function buildVocabulary(): Promise<Vocabulary> {
     console.log('Building vocabulary');
     const t1 = performance.now();
     const text = readFileSync(CORPUS_PATH).toString();
