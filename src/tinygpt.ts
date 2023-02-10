@@ -17,13 +17,13 @@ const scentenceEncoderModel: UniversalSentenceEncoder = global.universalSentence
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 const wordpos = new WordPOS({ stopwords: false });
 
-type Corpus = {
+type Vocabulary = {
     wordTensors: Tensor2D;
     words: string[];
 };
 
-async function buildCorpus() {
-    console.log('Building corpus');
+async function buildVocabulary() {
+    console.log('Building vocabulary');
     const t1 = performance.now();
     const text = readFileSync(CORPUS_PATH).toString();
     const words: string[] = _.uniq(wordpos.parse(text));
@@ -148,27 +148,27 @@ async function words2Input(ngrams) {
     return tf.concat(wordTensors, 1);
 }
 
-function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
+function findClosestWord(tensor: Tensor2D, vocabulary: Vocabulary) {
     let closest = -1;
     let closestDist = null;
 
-    for(let i = 0; i < corpus.wordTensors.shape[0]; i++) {
-        const dist = tf.norm(tf.squaredDifference(corpus.wordTensors.slice(i, 1), tensor));
+    for(let i = 0; i < vocabulary.wordTensors.shape[0]; i++) {
+        const dist = tf.norm(tf.squaredDifference(vocabulary.wordTensors.slice(i, 1), tensor));
         if (closestDist === null || dist < closestDist) {
             closest = i;
             closestDist = dist;
         }
     }
 
-    return corpus.words[closest];
+    return vocabulary.words[closest];
 }
 
 async function buildModel() {
     const EPOCHS = 2;
 
-    const corpus = await buildCorpus();
+    const vocabulary = await buildVocabulary();
 
-    assert.equal(findClosestWord(await embedWord('horse'), corpus).indexOf('horse'), 0);
+    assert.equal(findClosestWord(await embedWord('horse'), vocabulary).indexOf('horse'), 0);
 
     console.log('Building embeddings');
 
@@ -275,7 +275,7 @@ async function getModel() {
 }
 
 export const main = async () => {
-    const corpus = await buildCorpus();
+    const vocabulary = await buildVocabulary();
     const wordPredictModel = await getModel() as LayersModel;
 
     // Test model
@@ -285,7 +285,7 @@ export const main = async () => {
         const last5 = words.slice(-BEFORE_SIZE);
         const wordTensors = await words2Input(last5);
         const prediction = wordPredictModel.predict(wordTensors) as Tensor2D;
-        words.push(findClosestWord(prediction, corpus));
+        words.push(findClosestWord(prediction, vocabulary));
     }
 
     console.log(`Original string:  ${originalString}`);
