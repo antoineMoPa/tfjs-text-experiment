@@ -22,6 +22,7 @@ type Vocabulary = {
     words: string[];
 };
 
+// Should randomize the order of words
 async function buildVocabulary(): Promise<Vocabulary> {
     console.log('Building vocabulary');
     const t1 = performance.now();
@@ -38,6 +39,10 @@ async function buildVocabulary(): Promise<Vocabulary> {
     };
 }
 
+function findWordIndex(expectedOutput: string, vocabulary: Vocabulary) {
+    return vocabulary.words.findIndex(item => item === expectedOutput);
+}
+
 type TrainingData = {
     inputs: Tensor2D;
     expectedOutputs: Tensor2D;
@@ -45,7 +50,10 @@ type TrainingData = {
 
 // First, as an experiment
 // Lets create a training dataset of n-grams and the expected next word
-const buildTrainingData = async (): Promise<TrainingData> => {
+const buildTrainingData = async (
+    { vocabulary } :
+    { vocabulary: Vocabulary }
+): Promise<TrainingData> => {
     const text = readFileSync(CORPUS_PATH).toString();
     const words = wordpos.parse(text);
     const expectedOutputs = [];
@@ -55,7 +63,7 @@ const buildTrainingData = async (): Promise<TrainingData> => {
         if (i % 500 === 0) {
             console.log(`built ${(i/words.length*100).toFixed(0)}% of training data`);
         }
-        if (Math.random() > 0.02) {
+        if (Math.random() > 0.01) {
             continue;
         }
         const expectedOutput = words[i + BEFORE_SIZE];
@@ -72,8 +80,12 @@ const buildTrainingData = async (): Promise<TrainingData> => {
         inputs.push(await words2Input(ngrams));
 
         // We want to predict the next word based on previous words.
-        expectedOutputs.push(await embedWord(expectedOutput));
+        const index = findWordIndex(expectedOutput, vocabulary);
+        console.log(index);
+        expectedOutputs.push(tf.oneHot(tf.tensor1d([index], 'int32'), vocabulary.words.length));
     }
+
+    console.log(tf.concat(inputs).shape, tf.concat(expectedOutputs).shape);
 
     return {
         inputs: tf.concat(inputs),
@@ -81,7 +93,10 @@ const buildTrainingData = async (): Promise<TrainingData> => {
     };
 }
 
-async function getTrainingData(): Promise<TrainingData> {
+async function getTrainingData(
+    { vocabulary } :
+    { vocabulary: Vocabulary }
+): Promise<TrainingData> {
 
     const PATH = 'data/trainingData.json';
     if (existsSync(PATH)) {
@@ -99,7 +114,7 @@ async function getTrainingData(): Promise<TrainingData> {
         });
     }
     else {
-        const data: TrainingData = await buildTrainingData();
+        const data: TrainingData = await buildTrainingData({ vocabulary });
         console.log('Caching training data to disk');
         await new Promise<void>(resolve => {
             const body = {
@@ -163,10 +178,11 @@ function findClosestWord(tensor: Tensor2D, vocabulary: Vocabulary) {
     return vocabulary.words[closest];
 }
 
-async function buildModel() {
+async function buildModel(
+    { vocabulary } :
+    { vocabulary: Vocabulary }
+) {
     const EPOCHS = 2;
-
-    const vocabulary = await buildVocabulary();
 
     assert.equal(findClosestWord(await embedWord('horse'), vocabulary).indexOf('horse'), 0);
 
@@ -219,7 +235,7 @@ async function buildModel() {
 
     wordPredictModel.add(
         tf.layers.dense({
-            units: EMBED_SHAPE[1],
+            units: vocabulary.words.length,
             activation: "elu",
         })
     );
@@ -239,13 +255,13 @@ async function buildModel() {
     const {
         inputs,
         expectedOutputs
-    } = await getTrainingData();
+    } = await getTrainingData({ vocabulary });
+    console.log(expectedOutputs.shape)
+
 
     console.log('Built training data!');
 
     console.log('Training word prediction model.');
-
-    console.log(inputs.shape);
 
     await wordPredictModel.fit(inputs, expectedOutputs, {
         epochs: EPOCHS,
@@ -262,7 +278,10 @@ async function buildModel() {
     return wordPredictModel;
 }
 
-async function getModel() {
+async function getModel(
+    { vocabulary } :
+    { vocabulary: Vocabulary }
+) {
     try {
         const wordPredictModel = await tf.loadLayersModel(WORD_PREDICT_MODEL_CACHE + '/model.json');
         return wordPredictModel;
@@ -271,12 +290,12 @@ async function getModel() {
         console.log('Model not found/has error. Generating')
     }
 
-    return buildModel();
+    return buildModel({ vocabulary });
 }
 
 export const main = async () => {
     const vocabulary = await buildVocabulary();
-    const wordPredictModel = await getModel() as LayersModel;
+    const wordPredictModel = await getModel({ vocabulary }) as LayersModel;
 
     // Test model
     const originalString = "The height of horses is measured";
@@ -285,7 +304,10 @@ export const main = async () => {
         const last5 = words.slice(-BEFORE_SIZE);
         const wordTensors = await words2Input(last5);
         const prediction = wordPredictModel.predict(wordTensors) as Tensor2D;
-        words.push(findClosestWord(prediction, vocabulary));
+
+        const predictedWord = tf.argMax(prediction, 1).dataSync()[0];
+        console.log(predictedWord);
+        words.push(vocabulary.words[predictedWord]);
     }
 
     console.log(`Original string:  ${originalString}`);
