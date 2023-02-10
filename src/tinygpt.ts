@@ -11,7 +11,7 @@ import * as assert from 'node:assert';
 import * as WordPOS from 'wordpos';
 
 const EMBED_SHAPE = [1, 512];
-const BEFORE_SIZE = 5;
+const BEFORE_SIZE = 128;
 const CORPUS_PATH = "data/data-corpus.txt";
 const scentenceEncoderModel: UniversalSentenceEncoder = global.universalSentenceEncoderModel;
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
@@ -52,6 +52,12 @@ const buildTrainingData = async (): Promise<TrainingData> => {
     const inputs = [];
 
     for (let i = 0; i < words.length - BEFORE_SIZE - 1; i++) {
+        if (i % 500 === 0) {
+            console.log(`built ${(i/words.length*100).toFixed(0)}% of training data`);
+        }
+        if (Math.random() > 0.02) {
+            continue;
+        }
         const expectedOutput = words[i + BEFORE_SIZE];
         const ngrams = [];
 
@@ -76,10 +82,11 @@ const buildTrainingData = async (): Promise<TrainingData> => {
 }
 
 async function getTrainingData(): Promise<TrainingData> {
-    console.log('building training data...');
 
     const PATH = 'data/trainingData.json';
     if (existsSync(PATH)) {
+        console.log('Reading training data from cache...');
+
         return new Promise<TrainingData>(resolve => {
             const parseStream = json.createParseStream();
             parseStream.on('data', function(data) {
@@ -93,7 +100,7 @@ async function getTrainingData(): Promise<TrainingData> {
     }
     else {
         const data: TrainingData = await buildTrainingData();
-
+        console.log('Caching training data to disk');
         await new Promise<void>(resolve => {
             const body = {
                 inputs: data.inputs.arraySync(),
@@ -109,7 +116,7 @@ async function getTrainingData(): Promise<TrainingData> {
                 resolve();
             });
         });
-
+        console.log('Done!');
         return data;
     }
 }
@@ -133,6 +140,11 @@ async function words2Input(ngrams) {
         wordTensors.push(await embedWord(ngrams[i]));
     }
 
+    // Normalize input to always have BEFORE_SIZE samples
+    while (wordTensors.length < BEFORE_SIZE) {
+        wordTensors.push(tf.zeros(EMBED_SHAPE));
+    }
+
     return tf.concat(wordTensors, 1);
 }
 
@@ -152,7 +164,7 @@ function findClosestWord(tensor: Tensor2D, corpus: Corpus) {
 }
 
 async function buildModel() {
-    const EPOCHS = 100;
+    const EPOCHS = 2;
 
     const corpus = await buildCorpus();
 
@@ -162,13 +174,14 @@ async function buildModel() {
 
     const wordPredictModel: Sequential = tf.sequential();
 
-    const HIDDEN_SCALE = 2500;
+    const HIDDEN_SCALE = 512;
 
     wordPredictModel.add(
         tf.layers.dense({
-            inputShape: [EMBED_SHAPE[1] * 5],
-            units: HIDDEN_SCALE,
+            inputShape: [EMBED_SHAPE[1] * BEFORE_SIZE],
+            units: HIDDEN_SCALE * 10,
             activation: "softmax",
+            kernelInitializer: tf.initializers.zeros()
         })
     );
 
@@ -180,14 +193,9 @@ async function buildModel() {
 
     wordPredictModel.add(
         tf.layers.dense({
-            units: HIDDEN_SCALE,
+            units: HIDDEN_SCALE * 2,
             activation: "softmax",
-        })
-    );
-
-    wordPredictModel.add(
-        tf.layers.dropout({
-            rate: 0.5
+            kernelInitializer: tf.initializers.zeros()
         })
     );
 
@@ -201,21 +209,13 @@ async function buildModel() {
         tf.layers.layerNormalization({})
     );
 
-
-    wordPredictModel.add(
-        tf.layers.dense({
-            units: HIDDEN_SCALE,
-            activation: "linear",
-        })
-    );
-
     wordPredictModel.add(
         tf.layers.dense({
             units: HIDDEN_SCALE,
             activation: "softmax",
+            kernelInitializer: tf.initializers.zeros()
         })
     );
-
 
     wordPredictModel.add(
         tf.layers.dense({
@@ -231,6 +231,7 @@ async function buildModel() {
         optimizer: tf.train.adam(),
         loss: 'binaryCrossentropy',
     })
+
     console.log('Done!');
 
     console.log('Building training data!\n\n');
@@ -243,6 +244,8 @@ async function buildModel() {
     console.log('Built training data!');
 
     console.log('Training word prediction model.');
+
+    console.log(inputs.shape);
 
     await wordPredictModel.fit(inputs, expectedOutputs, {
         epochs: EPOCHS,
