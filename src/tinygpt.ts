@@ -56,7 +56,9 @@ async function getVocabulary(): Promise<Vocabulary> {
 async function buildVocabulary(): Promise<Vocabulary> {
     console.log('Building vocabulary');
     const t1 = performance.now();
-    const text = 'computer horse carry'; //readFileSync(CORPUS_PATH).toString();
+    let text = readFileSync(CORPUS_PATH).toString();
+    // hack
+    text = 'the quick brown fox jumps over the lazy dog';
     const words: string[] = _.shuffle(_.uniq(wordpos.parse(text)));
 
     const t2 = performance.now();
@@ -84,57 +86,35 @@ const buildTrainingData = async (
     { vocabulary } :
     { vocabulary: Vocabulary }
 ): Promise<TrainingData> => {
-    const text = readFileSync(CORPUS_PATH).toString();
+    let text = readFileSync(CORPUS_PATH).toString();
+    // HACK
+    text = 'the quick brown fox jumps over the lazy dog';
+
     const words = wordpos.parse(text);
     const expectedOutputs = [];
     const inputs = [];
 
+    for (let i = 0; i < words.length - BEFORE_SIZE - 1; i++) {
+        if (i % 500 === 0) {
+            console.log(`built ${(i/words.length*100).toFixed(0)}% of training data`);
+        }
+        const expectedOutput = words[i + BEFORE_SIZE];
+        const ngrams = [];
 
-    // for (let i = 0; i < words.length - BEFORE_SIZE - 1; i++) {
-    //     if (i % 500 === 0) {
-    //         console.log(`built ${(i/words.length*100).toFixed(0)}% of training data`);
-    //     }
-    //     if (Math.random() > 0.1) {
-    //         continue;
-    //     }
-    //     const expectedOutput = words[i + BEFORE_SIZE];
-    //     const ngrams = [];
-    //
-    //     words.slice(i, i + BEFORE_SIZE).forEach(word => {
-    //         ngrams.push(word);
-    //     });
-    //
-    //     if (ngrams.length < BEFORE_SIZE) {
-    //         continue;
-    //     }
-    //
-    //     inputs.push(await words2Input(ngrams, vocabulary));
-    //
-    //     // We want to predict the next word based on previous words.
-    //     const index = findWordIndex(expectedOutput, vocabulary);
-    //     expectedOutputs.push(index);
-    // }
+        words.slice(i, i + BEFORE_SIZE).forEach(word => {
+            ngrams.push(word);
+        });
 
-    inputs.push(await words2Input(['horse'], vocabulary));
-    expectedOutputs.push(findWordIndex('horse', vocabulary));
+        if (ngrams.length < BEFORE_SIZE) {
+            continue;
+        }
 
-    inputs.push(await words2Input(['computer'], vocabulary));
-    expectedOutputs.push(findWordIndex('computer', vocabulary));
+        inputs.push(await words2Input(ngrams, vocabulary));
 
-    inputs.push(await words2Input(['carry'], vocabulary));
-    expectedOutputs.push(findWordIndex('carry', vocabulary));
-
-    inputs.push(await words2Input(['horse'], vocabulary));
-    expectedOutputs.push(findWordIndex('horse', vocabulary));
-
-    inputs.push(await words2Input(['carry'], vocabulary));
-    expectedOutputs.push(findWordIndex('carry', vocabulary));
-
-    inputs.push(await words2Input(['computer'], vocabulary));
-    expectedOutputs.push(findWordIndex('computer', vocabulary));
-
-    console.log({ inputs });
-    console.log({ expectedOutputs });
+        // We want to predict the next word based on previous words.
+        const index = findWordIndex(expectedOutput, vocabulary);
+        expectedOutputs.push(index);
+    }
 
     return {
         inputs,
@@ -179,6 +159,11 @@ async function getTrainingData(
     }
 }
 
+const minitest = async (wordPredictModel, vocabulary) => {
+    console.log(`should be quick: ${await predict(['the'], wordPredictModel, vocabulary)}`);
+    console.log(`should be fox: ${await predict(['brown'], wordPredictModel, vocabulary)}`);
+    console.log(`should be over: ${await predict(['jumps'], wordPredictModel, vocabulary)}`);
+};
 
 async function words2Input(ngrams, vocabulary) {
     let input  = [];
@@ -200,7 +185,7 @@ async function buildModel(
     { vocabulary } :
     { vocabulary: Vocabulary }
 ) {
-    const EPOCHS = 100;
+    const EPOCHS = 200;
 
     const wordPredictModel: Sequential = tf.sequential();
 
@@ -211,7 +196,7 @@ async function buildModel(
             inputShape: [vocabulary.words.length * BEFORE_SIZE],
             units: HIDDEN_SCALE,
             activation: "softmax",
-            //kernelInitializer: tf.initializers.randomNormal({})
+            kernelInitializer: tf.initializers.randomNormal({})
         })
     );
 
@@ -226,7 +211,7 @@ async function buildModel(
     wordPredictModel.summary();
 
     console.log('Compiling word prediction model.');
-    const alpha = 0.01;
+    const alpha = 0.003;
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
         loss: 'categoricalCrossentropy',
@@ -239,10 +224,7 @@ async function buildModel(
     const inputs = data.inputs.map(
         sample =>
             tf.concat(
-                sample.map(value => {
-                    console.log({ value: indexToOneHot(value, vocabulary) });
-                    return indexToOneHot(value, vocabulary);
-                }),
+                sample.map(value => indexToOneHot(value, vocabulary)),
                 1
             )
     );
@@ -253,16 +235,14 @@ async function buildModel(
     console.log('Built training data!');
 
     console.log('Training word prediction model.');
-    console.log(data.expectedOutputs);
-    await wordPredictModel.fit(tf.concat((inputs),0), tf.concat(expectedOutputs,0), {
+    console.log({ inputs });
+    await wordPredictModel.fit(tf.concat(inputs,0), tf.concat(expectedOutputs,0), {
         epochs: EPOCHS,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
-                console.log(`should be horse: ${await predict(['horse'], wordPredictModel, vocabulary)}`);
-                console.log(`should be carry: ${await predict(['carry'], wordPredictModel, vocabulary)}`);
-                console.log(`should be computer: ${await predict(['computer'], wordPredictModel, vocabulary)}`);
+                await minitest(wordPredictModel, vocabulary);
 
-                if (epoch % 1 === 0) {
+                if (epoch % 10 === 0) {
                     console.log(`Epoch ${epoch}: error: ${logs.loss}`)
                 }
             },
@@ -303,17 +283,14 @@ export const main = async () => {
     const wordPredictModel = await getModel({ vocabulary }) as LayersModel;
 
     // Test model
-    const originalString = "horse horse horse horse horse horse";
+    const originalString = "the";
     const words = wordpos.parse(originalString);
-    console.log({words})
 
     for (let i = 0; i < 10; i++) {
         words.push(await predict(words, wordPredictModel, vocabulary));
     }
 
-    console.log(`should be horse: ${await predict(['horse'], wordPredictModel, vocabulary)}`);
-    console.log(`should be carry: ${await predict(['carry'], wordPredictModel, vocabulary)}`);
-    console.log(`should be computer: ${await predict(['computer'], wordPredictModel, vocabulary)}`);
+    minitest(wordPredictModel, vocabulary)
 
     console.log(`Original string:  ${originalString}`);
     console.log(`Completed string: ${words.join(' ')}`);
