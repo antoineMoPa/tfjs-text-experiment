@@ -4,3 +4,4 @@ node_modules
 wordPredictModel
 data/data-corpus.txt
 data/trainingData.json
+data/vocabulary.json

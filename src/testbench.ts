@@ -1,7 +1,3 @@
-// Source map support. Does this work?
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-require('source-map-support').install();
-
 // Test bench deps
 import { execSync } from 'child_process';
 import { watch } from 'chokidar';

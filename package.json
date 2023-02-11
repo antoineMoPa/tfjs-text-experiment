@@ -6,15 +6,16 @@
     "author": "antoineMoPa",
     "license": "MIT",
     "scripts": {
-        "build": "tsc src/*.ts --outDir dist",
-        "testbench": "rm -rf dist/* && yarn run lint && yarn run build && node dist/testbench.js",
-        "testbench:debug": "rm -rf dist/* && yarn run lint && yarn run build && node debug dist/testbench.js",
-        "test": "rm -rf dist/* && yarn run lint && yarn run build && node dist/tinyindex.js",
+        "build": "tsc --project tsconfig.json --outDir dist",
+        "testbench": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps dist/testbench.js",
+        "testbench:debug": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps debug dist/testbench.js",
+        "test": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps dist/tinyindex.js",
         "lint": "eslint . --ext .ts",
+        "purgeVocabulary": "rm -rf data/vocabulary.json",
         "purgeTrainingData": "rm -rf data/trainingData.json",
         "purgeModel": "rm -rf data/wordPredictModel",
-        "purge": "yarn run purgeTrainingData && yarn run purgeModel",
-        "buildCorpus": "node dist/buildCorpus.js",
+        "purge": "yarn run purgeTrainingData && yarn run purgeModel && yarn run purgeVocabulary",
+        "buildCorpus": "node --enable-source-maps dist/buildCorpus.js",
         "tfjs:fix": "npm rebuild @tensorflow/tfjs-node --build-addon-from-source"
     },
     "dependencies": {
@@ -27,7 +28,6 @@
         "chokidar": "^3.5.3",
         "eslint": "^8.33.0",
         "lodash": "^4.17.21",
-        "source-map-support": "^0.5.21",
         "typescript": "^4.9.5",
         "wordpos": "^2.1.0"
     }
