@@ -185,11 +185,11 @@ async function buildModel(
     { vocabulary } :
     { vocabulary: Vocabulary }
 ) {
-    const EPOCHS = 200;
+    const EPOCHS = 100;
 
     const wordPredictModel: Sequential = tf.sequential();
 
-    const HIDDEN_SCALE = 3;
+    const HIDDEN_SCALE = 20;
 
     wordPredictModel.add(
         tf.layers.dense({
@@ -238,6 +238,7 @@ async function buildModel(
     console.log({ inputs });
     await wordPredictModel.fit(tf.concat(inputs,0), tf.concat(expectedOutputs,0), {
         epochs: EPOCHS,
+        batchSize: 1,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
                 await minitest(wordPredictModel, vocabulary);
