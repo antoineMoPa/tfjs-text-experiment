@@ -218,7 +218,7 @@ async function buildModel(
     wordPredictModel.add(
         tf.layers.dense({
             units: vocabulary.words.length,
-            activation: "relu",
+            activation: "softmax",
             kernelInitializer: tf.initializers.randomNormal({})
         })
     );
@@ -226,10 +226,10 @@ async function buildModel(
     wordPredictModel.summary();
 
     console.log('Compiling word prediction model.');
-    const alpha = 0.001;
+    const alpha = 0.01;
     wordPredictModel.compile({
-        optimizer: tf.train.sgd(alpha),
-        loss: 'meanSquaredError',
+        optimizer: tf.train.adamax(alpha),
+        loss: 'categoricalCrossentropy',
     })
 
     console.log('Building training data!\n\n');
@@ -239,7 +239,10 @@ async function buildModel(
     const inputs = data.inputs.map(
         sample =>
             tf.concat(
-                sample.map(value => indexToOneHot(value, vocabulary)),
+                sample.map(value => {
+                    console.log({ value: indexToOneHot(value, vocabulary) });
+                    return indexToOneHot(value, vocabulary);
+                }),
                 1
             )
     );
@@ -255,9 +258,9 @@ async function buildModel(
         epochs: EPOCHS,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
-                console.log(`should be horse: ${await predict('horse', wordPredictModel, vocabulary)}`);
-                console.log(`should be carry: ${await predict('carry', wordPredictModel, vocabulary)}`);
-                console.log(`should be computer: ${await predict('computer', wordPredictModel, vocabulary)}`);
+                console.log(`should be horse: ${await predict(['horse'], wordPredictModel, vocabulary)}`);
+                console.log(`should be carry: ${await predict(['carry'], wordPredictModel, vocabulary)}`);
+                console.log(`should be computer: ${await predict(['computer'], wordPredictModel, vocabulary)}`);
 
                 if (epoch % 1 === 0) {
                     console.log(`Epoch ${epoch}: error: ${logs.loss}`)
@@ -286,15 +289,11 @@ async function getModel(
 
 const predict = async (before, wordPredictModel, vocabulary: Vocabulary) => {
     const inputWords = await words2Input(before.slice(-BEFORE_SIZE), vocabulary);
-    console.log(inputWords.map(value => indexToOneHot(value, vocabulary)));
-    const input = inputWords.map(value => indexToOneHot(value, vocabulary));
-    const prediction = wordPredictModel.predict(inputWords) as Tensor2D;
 
-    console.log('in: ', input.map(t => t.dataSync()));
-    console.log('out: ', prediction.dataSync());
+    const input = tf.concat(inputWords.map(value => indexToOneHot(value, vocabulary)));
+    const prediction = wordPredictModel.predict(input) as Tensor2D;
 
     const predictedWord = tf.argMax(prediction, 1).dataSync()[0];
-    console.log(`PredictionIndex: ${predictedWord}`);
 
     return vocabulary.words[predictedWord]
 }
@@ -312,9 +311,9 @@ export const main = async () => {
         words.push(await predict(words, wordPredictModel, vocabulary));
     }
 
-    console.log(`should be horse: ${await predict('horse', wordPredictModel, vocabulary)}`);
-    console.log(`should be carry: ${await predict('carry', wordPredictModel, vocabulary)}`);
-    console.log(`should be computer: ${await predict('computer', wordPredictModel, vocabulary)}`);
+    console.log(`should be horse: ${await predict(['horse'], wordPredictModel, vocabulary)}`);
+    console.log(`should be carry: ${await predict(['carry'], wordPredictModel, vocabulary)}`);
+    console.log(`should be computer: ${await predict(['computer'], wordPredictModel, vocabulary)}`);
 
     console.log(`Original string:  ${originalString}`);
     console.log(`Completed string: ${words.join(' ')}`);
