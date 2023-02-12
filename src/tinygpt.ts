@@ -224,8 +224,7 @@ export async function buildModel(
         verbose,
         level,
         beforeSize
-    } :
-    BuildModelArgs
+    } :BuildModelArgs
 ) {
     if (verbose === undefined) {
         verbose = true;
@@ -233,7 +232,12 @@ export async function buildModel(
     if (level === undefined) {
         level = 0;
     }
-    const EPOCHS = 100;
+
+    const level_to_epochs = {
+        '0': 100,
+        '1': 100
+    };
+    const epochs = level_to_epochs[level];
     const wordPredictModel: Sequential = tf.sequential();
 
     wordPredictModel.add(
@@ -246,14 +250,16 @@ export async function buildModel(
         })
     );
 
-    //wordPredictModel.add(
-    //    tf.layers.dense({
-    //        units: 60,
-    //        activation: "softmax",
-    //        kernelInitializer: tf.initializers.randomNormal({}),
-    //        name: "hidden",
-    //    })
-    //);
+    if (level > 0) {
+        wordPredictModel.add(
+            tf.layers.dense({
+                units: 400,
+                activation: "relu",
+                kernelInitializer: tf.initializers.randomNormal({}),
+                name: "hidden",
+            })
+        );
+    }
 
     wordPredictModel.add(
         tf.layers.dense({
@@ -267,7 +273,12 @@ export async function buildModel(
     verbose && wordPredictModel.summary();
     verbose && console.log('Compiling word prediction model.');
 
-    const alpha = 0.003;
+    const level_to_alpha = {
+        '0': 0.003,
+        '1': 0.003
+    };
+    const alpha = level_to_alpha[level];
+
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
         loss: 'categoricalCrossentropy',
@@ -291,7 +302,7 @@ export async function buildModel(
     verbose && console.log('Training word prediction model.');
 
     await wordPredictModel.fit(tf.concat(inputs, 0), tf.concat(expectedOutputs, 0), {
-        epochs: EPOCHS,
+        epochs,
         batchSize: 10,
         verbose: verbose ? 1 : 0,
         callbacks: {
@@ -306,6 +317,45 @@ export async function buildModel(
 
     await wordPredictModel.save(WORD_PREDICT_MODEL_CACHE);
     return wordPredictModel;
+}
+
+type BuildModelFromTextArgs = {
+    text?: string,
+    verbose?: boolean,
+    level?: number,
+};
+
+const LEVEL_TO_BEFORE_SIZE = {
+    '0': 3,
+    '1': 5
+};
+
+export async function buildModelFromText({
+    text,
+    verbose,
+    level,
+} : BuildModelFromTextArgs) {
+    const beforeSize: number = LEVEL_TO_BEFORE_SIZE[level];
+    const vocabulary = await buildVocabulary(text);
+    const trainingData = await buildTrainingData({
+        vocabulary,
+        text,
+        beforeSize,
+    });
+
+    const wordPredictModel = await buildModel({
+        vocabulary,
+        trainingData,
+        verbose,
+        level,
+        beforeSize
+    });
+
+    return {
+        wordPredictModel,
+        vocabulary,
+        beforeSize
+    };
 }
 
 async function getModel(
