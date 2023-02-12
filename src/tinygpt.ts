@@ -1,6 +1,5 @@
 import { readFileSync, existsSync, createWriteStream, createReadStream, readdirSync } from 'fs';
 import type { Tensor2D } from '@tensorflow/tfjs-core/dist/tensor';
-import type { Sequential } from '@tensorflow/tfjs-layers/dist/models';
 
 import * as tf from '@tensorflow/tfjs-node';
 import * as _ from 'lodash';
@@ -11,8 +10,29 @@ import * as json from 'big-json';
 const CORPUS_PATH = "data/corpus";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 
-export const tokenize = (text) => {
-    return text.split(/[ \n]/);
+export const tokenize = (text:string) => {
+    const tokens = [];
+    let cursor = 0;
+    let lastTokenBeginCursor = 0;
+    const stopRegex = /[ \n\\.]/;
+
+    while(cursor < text.length) {
+        if (stopRegex.test(text[cursor])) {
+            const char = text[cursor];
+            if (char === ' ' || char === '.' || char === '\n') {
+                const token = text.slice(lastTokenBeginCursor, cursor);
+                tokens.push(token);
+                lastTokenBeginCursor = cursor;
+            }
+        }
+
+        cursor += 1;
+    }
+
+    // Push any leftovers
+    tokens.push(text.slice(lastTokenBeginCursor));
+
+    return tokens;
 }
 
 type Vocabulary = {
@@ -235,8 +255,15 @@ export async function buildModel(
 
     const level_to_epochs = {
         '0': 100,
-        '1': 100
+        '1': 100,
+        '2': 100,
     };
+    const level_to_alpha = {
+        '0': 0.003,
+        '1': 0.003,
+        '2': 0.003
+    };
+
     const epochs = level_to_epochs[level];
 
     const inputs = tf.input({
@@ -285,10 +312,6 @@ export async function buildModel(
     verbose && wordPredictModel.summary();
     verbose && console.log('Compiling word prediction model.');
 
-    const level_to_alpha = {
-        '0': 0.003,
-        '1': 0.003
-    };
     const alpha = level_to_alpha[level];
 
     wordPredictModel.compile({
@@ -339,7 +362,8 @@ type BuildModelFromTextArgs = {
 
 const LEVEL_TO_BEFORE_SIZE = {
     '0': 3,
-    '1': 5
+    '1': 5,
+    '2': 10,
 };
 
 export async function buildModelFromText({
@@ -424,7 +448,7 @@ export const predictUntilEnd = async (inputText, {
 }) => {
     // Test model
     const words = tokenize(inputText);
-    const MAX = 100;
+    const MAX = 200;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
         const { word } = await predict(words.slice(-beforeSize), { wordPredictModel, vocabulary, beforeSize});
@@ -432,7 +456,7 @@ export const predictUntilEnd = async (inputText, {
         lastword = word;
     }
 
-    return words.join(' ');
+    return words.join('');
 };
 
 

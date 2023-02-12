@@ -21,7 +21,7 @@ describe('Model', async () => {
         const vocabulary = await buildVocabulary(text);
 
         // Assert
-        expect(vocabulary.words).to.contain('fox');
+        expect(vocabulary.words).to.contain(' fox');
         expect(vocabulary.words).to.contain('[END]');
     });
 
@@ -45,7 +45,7 @@ describe('Model', async () => {
         );
 
         // Assert
-        expect(word).to.equal('fox');
+        expect(word).to.equal(' fox');
     });
 
     it('Should remember a simple sentence', async () => {
@@ -69,7 +69,7 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + ' [END]');
+        expect(sentence).to.equal(text + '[END]');
     });
 
     it('Should remember a more complex sentence', async () => {
@@ -94,7 +94,7 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + ' [END]');
+        expect(sentence).to.equal(text + '[END]');
     });
 
     it('Should remember an even more complex sentence', async () => {
@@ -114,7 +114,7 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + ' [END]');
+        expect(sentence).to.equal(text + '[END]');
     });
 
     it('Should remember a couple of sentences', async function() {
@@ -134,7 +134,7 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + ' [END]');
+        expect(sentence).to.equal(text + '[END]');
     });
 
     it('Should remember an entire paragraph', async function() {
@@ -155,12 +155,13 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + ' [END]');
+        expect(sentence).to.equal(text + '[END]');
     });
 
     it('Should remember multiple paragraphs', async function() {
+        this.timeout(20000);
         // Arrange
-        const text = 'Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.';
+        const text = "Horse breeds are loosely divided into three categories based on general temperament: spirited \"hot bloods\" with speed and endurance; \"cold bloods\", such as draft horses and some ponies, suitable for slow, heavy work; and \"warmbloods\", developed from crosses between hot bloods and cold bloods, often focusing on creating breeds for specific riding purposes, particularly in Europe. There are more than 300 breeds of horse in the world today, developed for many different uses.\n Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.";
 
         const { wordPredictModel, vocabulary, beforeSize } = await buildModelFromText({
             text,
@@ -169,13 +170,13 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horses and humans interact in a wide", {
+        const sentence = await predictUntilEnd("Horse breeds are loosely divided into", {
             vocabulary,
             wordPredictModel,
             beforeSize
         })
 
         // Assert
-        expect(sentence).to.equal(text + ' [END]');
+        expect(sentence).to.equal((text + '[END]'));
     });
 });
