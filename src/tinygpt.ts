@@ -339,7 +339,7 @@ type BuildModelFromTextArgs = {
 
 const LEVEL_TO_BEFORE_SIZE = {
     '0': 3,
-    '1': 3
+    '1': 5
 };
 
 export async function buildModelFromText({
