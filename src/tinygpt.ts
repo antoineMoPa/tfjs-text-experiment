@@ -7,12 +7,14 @@ import * as _ from 'lodash';
 import { performance } from 'perf_hooks';
 import { LayersModel } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
-import * as WordPOS from 'wordpos';
 
-const BEFORE_SIZE = 1;
+const BEFORE_SIZE = 2;
 const CORPUS_PATH = "data/data-corpus.txt";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
-const wordpos = new WordPOS({ stopwords: false });
+
+const tokenize = (text) => {
+    return text.split(' ');
+}
 
 type Vocabulary = {
     words: string[];
@@ -59,8 +61,9 @@ async function buildVocabulary(): Promise<Vocabulary> {
     let text = readFileSync(CORPUS_PATH).toString();
     // hack
     text = 'the quick brown fox jumps over the lazy dog';
-    const words: string[] = _.shuffle(_.uniq(wordpos.parse(text)));
-
+    const words: string[] = _.shuffle(_.uniq(tokenize(text)));
+    words.push('[END]');
+    words.push('[NULL]');
     const t2 = performance.now();
     console.log(`Done! (in ${(t2 - t1).toFixed(0)} ms)`);
 
@@ -76,50 +79,8 @@ type TrainingData = {
     expectedOutputs: number[];
 };
 
-function indexToOneHot(index: number, vocabulary: Vocabulary) {
+function wordIndexToOneHot(index: number, vocabulary: Vocabulary) {
     return tf.oneHot(tf.tensor1d([index], 'int32'), vocabulary.words.length);
-}
-
-// First, as an experiment
-// Lets create a training dataset of n-grams and the expected next word
-const buildTrainingData = async (
-    { vocabulary } :
-    { vocabulary: Vocabulary }
-): Promise<TrainingData> => {
-    let text = readFileSync(CORPUS_PATH).toString();
-    // HACK
-    text = 'the quick brown fox jumps over the lazy dog';
-
-    const words = wordpos.parse(text);
-    const expectedOutputs = [];
-    const inputs = [];
-
-    for (let i = 0; i < words.length - BEFORE_SIZE - 1; i++) {
-        if (i % 500 === 0) {
-            console.log(`built ${(i/words.length*100).toFixed(0)}% of training data`);
-        }
-        const expectedOutput = words[i + BEFORE_SIZE];
-        const ngrams = [];
-
-        words.slice(i, i + BEFORE_SIZE).forEach(word => {
-            ngrams.push(word);
-        });
-
-        if (ngrams.length < BEFORE_SIZE) {
-            continue;
-        }
-
-        inputs.push(await words2Input(ngrams, vocabulary));
-
-        // We want to predict the next word based on previous words.
-        const index = findWordIndex(expectedOutput, vocabulary);
-        expectedOutputs.push(index);
-    }
-
-    return {
-        inputs,
-        expectedOutputs
-    };
 }
 
 async function getTrainingData(
@@ -146,7 +107,6 @@ async function getTrainingData(
         await new Promise<void>(resolve => {
             const stringifyStream = json.createStringifyStream({ body: data });
             const writableStream = createWriteStream(PATH);
-
             stringifyStream.on('data', function(strChunk) {
                 writableStream.write(strChunk);
             });
@@ -160,25 +120,59 @@ async function getTrainingData(
 }
 
 const minitest = async (wordPredictModel, vocabulary) => {
-    console.log(`should be quick: ${await predict(['the'], wordPredictModel, vocabulary)}`);
-    console.log(`should be fox: ${await predict(['brown'], wordPredictModel, vocabulary)}`);
-    console.log(`should be over: ${await predict(['jumps'], wordPredictModel, vocabulary)}`);
+    console.log(`should be brown: ${(await predict(['the', 'quick'], wordPredictModel, vocabulary)).word}`);
+    console.log(`should be fox: ${(await predict(['quick', 'brown'], wordPredictModel, vocabulary)).word}`);
+    console.log(`should be over: ${(await predict(['fox', 'jumps'], wordPredictModel, vocabulary)).word}`);
+    console.log(`should be the: ${(await predict(['jumps', 'over'], wordPredictModel, vocabulary)).word}`);
 };
 
 async function words2Input(ngrams, vocabulary) {
-    let input  = [];
+    const input  = [];
 
     for (let i = 0; i < ngrams.length; i++) {
         const index = findWordIndex(ngrams[i], vocabulary);
         input.push(index);
     }
 
-    // Normalize input to always have BEFORE_SIZE samples
-    while (input.length < BEFORE_SIZE) {
-        input = [0, ...input];
+    return input;
+}
+
+const buildTrainingData = async (
+    { vocabulary } :
+    { vocabulary: Vocabulary }
+): Promise<TrainingData> => {
+    let text = readFileSync(CORPUS_PATH).toString();
+    // HACK
+    text = 'the quick brown fox jumps over the lazy dog';
+    const words = tokenize(text);
+    words.push('[END]');
+    console.log({words})
+    const expectedOutputs = [];
+    const inputs = [];
+
+    while (words.length > 1 && words.length > BEFORE_SIZE) {
+        const ngrams = [];
+        let i = 0;
+        for (; i < BEFORE_SIZE && words.length > 1; i++){
+            ngrams.push(words[i]);
+        }
+
+        const expectedOutput = words[BEFORE_SIZE];
+        inputs.push(await words2Input(ngrams, vocabulary));
+
+        // We want to predict the next word based on previous words.
+        const index = findWordIndex(expectedOutput, vocabulary);
+        expectedOutputs.push(index);
+
+        console.log({ ngrams,  expectedOutput })
+
+        words.shift();
     }
 
-    return input;
+    return {
+        inputs,
+        expectedOutputs,
+    };
 }
 
 async function buildModel(
@@ -189,14 +183,13 @@ async function buildModel(
 
     const wordPredictModel: Sequential = tf.sequential();
 
-    const HIDDEN_SCALE = 20;
-
     wordPredictModel.add(
         tf.layers.dense({
-            inputShape: [vocabulary.words.length * BEFORE_SIZE],
-            units: HIDDEN_SCALE,
+            inputShape: [(vocabulary.words.length) * BEFORE_SIZE],
+            units: (vocabulary.words.length) * BEFORE_SIZE,
             activation: "softmax",
-            kernelInitializer: tf.initializers.randomNormal({})
+            kernelInitializer: tf.initializers.randomNormal({}),
+            name: "input",
         })
     );
 
@@ -204,7 +197,8 @@ async function buildModel(
         tf.layers.dense({
             units: vocabulary.words.length,
             activation: "softmax",
-            kernelInitializer: tf.initializers.randomNormal({})
+            kernelInitializer: tf.initializers.randomNormal({}),
+            name: "output",
         })
     );
 
@@ -222,23 +216,27 @@ async function buildModel(
     const data = await getTrainingData({ vocabulary });
 
     const inputs = data.inputs.map(
-        sample =>
-            tf.concat(
-                sample.map(value => indexToOneHot(value, vocabulary)),
-                1
-            )
+        sample => {
+            const data = tf.concat(
+                sample.map(value => wordIndexToOneHot(value, vocabulary)), 1
+            );
+            console.log(data.shape);
+            return data;
+        }
     );
     const expectedOutputs = data.expectedOutputs.map(
-        value => indexToOneHot(value, vocabulary)
+        value => wordIndexToOneHot(value, vocabulary)
     );
+
+    // eslin
+    debugger;
 
     console.log('Built training data!');
 
     console.log('Training word prediction model.');
-    console.log({ inputs });
-    await wordPredictModel.fit(tf.concat(inputs,0), tf.concat(expectedOutputs,0), {
+    await wordPredictModel.fit(tf.concat(inputs, 0), tf.concat(expectedOutputs, 0), {
         epochs: EPOCHS,
-        batchSize: 1,
+        batchSize: 10,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
                 await minitest(wordPredictModel, vocabulary);
@@ -271,12 +269,18 @@ async function getModel(
 const predict = async (before, wordPredictModel, vocabulary: Vocabulary) => {
     const inputWords = await words2Input(before.slice(-BEFORE_SIZE), vocabulary);
 
-    const input = tf.concat(inputWords.map(value => indexToOneHot(value, vocabulary)));
+    if (before.length !== BEFORE_SIZE) {
+        throw new Error(`Before is not long enough. Got ${before.length}, expected ${BEFORE_SIZE}`);
+    }
+
+    const input = tf.concat(inputWords.map(value => wordIndexToOneHot(value, vocabulary)), 1);
     const prediction = wordPredictModel.predict(input) as Tensor2D;
 
-    const predictedWord = tf.argMax(prediction, 1).dataSync()[0];
+    const token= tf.argMax(prediction, 1).dataSync()[0];
 
-    return vocabulary.words[predictedWord]
+    const word = vocabulary.words[token];
+
+    return { word, token };
 }
 
 export const main = async () => {
@@ -284,11 +288,15 @@ export const main = async () => {
     const wordPredictModel = await getModel({ vocabulary }) as LayersModel;
 
     // Test model
-    const originalString = "the";
-    const words = wordpos.parse(originalString);
+    const originalString = "the quick";
+    const words = tokenize(originalString);
 
     for (let i = 0; i < 10; i++) {
-        words.push(await predict(words, wordPredictModel, vocabulary));
+        const { word } = await predict(words.slice(-BEFORE_SIZE), wordPredictModel, vocabulary);
+        words.push(word);
+        if (word === '[END]') {
+            break;
+        }
     }
 
     minitest(wordPredictModel, vocabulary)
