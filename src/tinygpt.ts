@@ -278,7 +278,7 @@ export async function buildModel(
     })
 
     const denseLayer1Output = denseLayer1.apply(inputs) as SymbolicTensor;
-    let levelOutput = denseLayer1Output as SymbolicTensor;
+    const levelOutput = denseLayer1Output as SymbolicTensor;
 
     if (level > 0) {
         // const level1DenseLayer1 = tf.layers.dense({
