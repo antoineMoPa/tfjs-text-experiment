@@ -100,20 +100,11 @@ describe('Model', async () => {
     it('Should remember an even more complex sentence', async () => {
         // Arrange
         const text = 'The horse has evolved over the past 45 to 55 million years from a small multi-toed creature, Eohippus, into the large, single-toed animal of today';
-        const vocabulary = await buildVocabulary(text);
-        const beforeSize = 3;
-        const trainingData = await buildTrainingData({
-            vocabulary,
+        const { wordPredictModel, vocabulary, beforeSize } = await buildModelFromText({
             text,
-            beforeSize
-        });
-        const wordPredictModel = await buildModel({
-            vocabulary,
-            trainingData,
             verbose: true,
-            beforeSize,
-        }) as LayersModel;
-
+            level: 0,
+        });
 
         // Act
         const sentence = await predictUntilEnd("The horse has", {
@@ -127,7 +118,7 @@ describe('Model', async () => {
     });
 
     it('Should remember a couple of sentences', async function() {
-        this.timeout(4000);
+        this.timeout(10000);
         // Arrange
         const text = 'Horses are adapted to run, allowing them to quickly escape predators, and possess an excellent sense of balance and a strong fight-or-flight response. Related to this need to flee from predators in the wild is an unusual trait: horses are able to sleep both standing up and lying down, with younger horses tending to sleep significantly more than adults.';
         const { wordPredictModel, vocabulary, beforeSize } = await buildModelFromText({
@@ -137,7 +128,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("The horse has", {
+        const sentence = await predictUntilEnd("Horses are adapted to run", {
             vocabulary,
             wordPredictModel,
             beforeSize

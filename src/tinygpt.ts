@@ -5,7 +5,7 @@ import type { Sequential } from '@tensorflow/tfjs-layers/dist/models';
 import * as tf from '@tensorflow/tfjs-node';
 import * as _ from 'lodash';
 import { performance } from 'perf_hooks';
-import { LayersModel } from '@tensorflow/tfjs-node';
+import { LayersModel, SymbolicTensor } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
 
 const CORPUS_PATH = "data/corpus";
@@ -238,37 +238,51 @@ export async function buildModel(
         '1': 100
     };
     const epochs = level_to_epochs[level];
-    const wordPredictModel: Sequential = tf.sequential();
 
-    wordPredictModel.add(
-        tf.layers.dense({
-            inputShape: [(vocabulary.words.length) * beforeSize],
-            units: (vocabulary.words.length) * beforeSize,
-            activation: "elu",
-            kernelInitializer: tf.initializers.randomNormal({}),
-            name: "input",
-        })
-    );
+    const inputs = tf.layers.input({
+        shape: [(vocabulary.words.length) * beforeSize],
+    });
+
+    const denseLayer1 = tf.layers.dense({
+        units: (vocabulary.words.length) * beforeSize,
+        activation: "swish",
+        kernelInitializer: tf.initializers.randomNormal({}),
+        name: "input",
+    })
 
     if (level > 0) {
-        wordPredictModel.add(
-            tf.layers.dense({
-                units: 400,
-                activation: "relu",
-                kernelInitializer: tf.initializers.randomNormal({}),
-                name: "hidden",
-            })
-        );
+        // const denseLayer = tf.layers.dense({
+        //     units: 1000,
+        //     activation: "swish",
+        //     kernelInitializer: tf.initializers.randomNormal({}),
+        //     name: "level-1-hidden-1",
+        // });
+        //
+        // const concat = tf.layers.concatenate();
+        // const combined = concat.apply([denseLayer, inputs]);
+
+        tf.layers.dense({
+            units: 1000,
+            activation: "swish",
+            kernelInitializer: tf.initializers.randomNormal({}),
+            name: "level-1-hidden-2",
+        })
+        // wordPredictModel.add(
+        //     tf.layers.dropout({
+        //         rate: 0.1
+        //     })
+        // );
     }
 
-    wordPredictModel.add(
-        tf.layers.dense({
-            units: vocabulary.words.length,
-            activation: "softmax",
-            kernelInitializer: tf.initializers.randomNormal({}),
-            name: "output",
-        })
-    );
+    const outputLayer = tf.layers.dense({
+        units: vocabulary.words.length,
+        activation: "softmax",
+        kernelInitializer: tf.initializers.randomNormal({}),
+        name: "output",
+    });
+
+    const outputs = outputLayer.apply(denseLayer1.apply(inputs)) as SymbolicTensor;
+    const wordPredictModel =  tf.model({ inputs, outputs });
 
     verbose && wordPredictModel.summary();
     verbose && console.log('Compiling word prediction model.');
@@ -286,7 +300,7 @@ export async function buildModel(
 
     verbose && console.log('Building training data!\n\n');
 
-    const inputs = trainingData.inputs.map(
+    const trainingInputs = trainingData.inputs.map(
         sample => {
             const data = tf.concat(
                 sample.map(value => wordIndexToOneHot(value, vocabulary)), 1
@@ -301,7 +315,7 @@ export async function buildModel(
     verbose && console.log('Built training data!');
     verbose && console.log('Training word prediction model.');
 
-    await wordPredictModel.fit(tf.concat(inputs, 0), tf.concat(expectedOutputs, 0), {
+    await wordPredictModel.fit(tf.concat(trainingInputs, 0), tf.concat(expectedOutputs, 0), {
         epochs,
         batchSize: 10,
         verbose: verbose ? 1 : 0,
@@ -327,7 +341,7 @@ type BuildModelFromTextArgs = {
 
 const LEVEL_TO_BEFORE_SIZE = {
     '0': 3,
-    '1': 5
+    '1': 8
 };
 
 export async function buildModelFromText({
