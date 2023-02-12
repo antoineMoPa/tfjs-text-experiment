@@ -8,11 +8,11 @@ import { performance } from 'perf_hooks';
 import { LayersModel } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
 
-const BEFORE_SIZE = 2;
+const BEFORE_SIZE = 3;
 const CORPUS_PATH = "data/corpus";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 
-const tokenize = (text) => {
+export const tokenize = (text) => {
     return text.split(/[ \n]/);
 }
 
@@ -53,24 +53,26 @@ async function getVocabulary(): Promise<Vocabulary> {
     }
 }
 
-
-// Should randomize the order of words
-async function buildVocabulary(): Promise<Vocabulary> {
+export async function buildVocabulary(text?: string): Promise<Vocabulary> {
     console.log('Building vocabulary');
     const t1 = performance.now();
-
-    const texts = readdirSync(CORPUS_PATH);
     let tokens = [];
 
-    for (const textFilename of texts) {
-        const text = readFileSync(CORPUS_PATH + '/' + textFilename).toString();
-        const newTokens = tokenize(text);
-        tokens = [...tokens, ...newTokens];
+    if (text) {
+        tokens = tokenize(text);
     }
+    else {
+        const texts = readdirSync(CORPUS_PATH);
 
+        for (const textFilename of texts) {
+            const text = readFileSync(CORPUS_PATH + '/' + textFilename).toString();
+            const newTokens = tokenize(text);
+            tokens = [...tokens, ...newTokens];
+        }
+    }
+    tokens.push('[END]');
+    tokens.push('[NULL]');
     const words: string[] = _.shuffle(_.uniq(tokens));
-    words.push('[END]');
-    words.push('[NULL]');
     const t2 = performance.now();
     console.log(`Done! (in ${(t2 - t1).toFixed(0)} ms)`);
 
@@ -144,19 +146,16 @@ async function words2Input(ngrams, vocabulary) {
     return input;
 }
 
-const buildTrainingData = async (
-    { vocabulary } :
-    { vocabulary: Vocabulary }
+export const buildTrainingData = async (
+    { vocabulary, text } :
+    { vocabulary: Vocabulary, text?: string }
 ): Promise<TrainingData> => {
-    const texts = readdirSync(CORPUS_PATH);
     const expectedOutputs = [];
     const inputs = [];
 
-    for (const textFilename of texts) {
-        const text = readFileSync(CORPUS_PATH + '/' + textFilename).toString();
+    const buildTrainingDataForText = async (text) => {
         const words = tokenize(text);
         words.push('[END]');
-        console.log({words})
 
         while (words.length > 1 && words.length > BEFORE_SIZE) {
             const ngrams = [];
@@ -172,9 +171,19 @@ const buildTrainingData = async (
             const index = findWordIndex(expectedOutput, vocabulary);
             expectedOutputs.push(index);
 
-            console.log({ ngrams,  expectedOutput })
-
             words.shift();
+        }
+    }
+
+    if (text) {
+        await buildTrainingDataForText(text);
+    }
+    else {
+        const texts = readdirSync(CORPUS_PATH);
+
+        for (const textFilename of texts) {
+            const text = readFileSync(CORPUS_PATH + '/' + textFilename).toString();
+            await buildTrainingDataForText(text);
         }
     }
 
@@ -184,9 +193,17 @@ const buildTrainingData = async (
     };
 }
 
-async function buildModel(
-    { vocabulary } :
-    { vocabulary: Vocabulary }
+export async function buildModel(
+    { vocabulary, trainingData, verbose } :
+    {
+        vocabulary: Vocabulary,
+        trainingData: TrainingData,
+        verbose?: boolean
+    } = {
+        vocabulary: undefined,
+        trainingData: undefined,
+        verbose: true
+    }
 ) {
     const EPOCHS = 100;
 
@@ -211,44 +228,42 @@ async function buildModel(
         })
     );
 
-    wordPredictModel.summary();
+    verbose && wordPredictModel.summary();
+    verbose && console.log('Compiling word prediction model.');
 
-    console.log('Compiling word prediction model.');
     const alpha = 0.003;
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
         loss: 'categoricalCrossentropy',
     })
 
-    console.log('Building training data!\n\n');
+    verbose && console.log('Building training data!\n\n');
 
-    const data = await getTrainingData({ vocabulary });
-
-    const inputs = data.inputs.map(
+    const inputs = trainingData.inputs.map(
         sample => {
             const data = tf.concat(
                 sample.map(value => wordIndexToOneHot(value, vocabulary)), 1
             );
-            console.log(data.shape);
             return data;
         }
     );
-    const expectedOutputs = data.expectedOutputs.map(
+    const expectedOutputs = trainingData.expectedOutputs.map(
         value => wordIndexToOneHot(value, vocabulary)
     );
 
     // eslin
     debugger;
 
-    console.log('Built training data!');
+    verbose && console.log('Built training data!');
+    verbose && console.log('Training word prediction model.');
 
-    console.log('Training word prediction model.');
     await wordPredictModel.fit(tf.concat(inputs, 0), tf.concat(expectedOutputs, 0), {
         epochs: EPOCHS,
         batchSize: 10,
+        verbose: verbose ? 1 : 0,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
-                if (epoch % 10 === 0) {
+                if (verbose && epoch % 10 === 0) {
                     console.log(`Epoch ${epoch}: error: ${logs.loss}`);
                     await minitest(wordPredictModel, vocabulary);
                 }
@@ -261,8 +276,8 @@ async function buildModel(
 }
 
 async function getModel(
-    { vocabulary } :
-    { vocabulary: Vocabulary }
+    { vocabulary, trainingData } :
+    { vocabulary: Vocabulary, trainingData: TrainingData }
 ) {
     try {
         const wordPredictModel = await tf.loadLayersModel(WORD_PREDICT_MODEL_CACHE + '/model.json');
@@ -271,16 +286,20 @@ async function getModel(
         console.log('Model not found/has error. Generating')
     }
 
-    return buildModel({ vocabulary });
+    return buildModel({ vocabulary, trainingData });
 }
 
-const predict = async (before, wordPredictModel, vocabulary: Vocabulary) => {
-    const inputWords = await words2Input(before.slice(-BEFORE_SIZE), vocabulary);
+export const predict = async (before, wordPredictModel, vocabulary: Vocabulary) => {
 
-    if (before.length !== BEFORE_SIZE) {
-        throw new Error(`Before is not long enough. Got ${before.length}, expected ${BEFORE_SIZE}`);
+    if (before.length < BEFORE_SIZE) {
+        console.error(`Before is not long enough. Got ${before.length}, expected ${BEFORE_SIZE}. We'll pad the input with [NULL]`);
+
+        while (before.length !== BEFORE_SIZE) {
+            before = ['[NULL]', ...before];
+        }
     }
 
+    const inputWords = await words2Input(before.slice(-BEFORE_SIZE), vocabulary);
     const input = tf.concat(inputWords.map(value => wordIndexToOneHot(value, vocabulary)), 1);
     const prediction = wordPredictModel.predict(input) as Tensor2D;
 
@@ -291,13 +310,12 @@ const predict = async (before, wordPredictModel, vocabulary: Vocabulary) => {
     return { word, token };
 }
 
-export const main = async () => {
-    const vocabulary = await getVocabulary();
-    const wordPredictModel = await getModel({ vocabulary }) as LayersModel;
-
+export const predictUntilEnd = async (inputText, {
+    vocabulary,
+    wordPredictModel
+}) => {
     // Test model
-    const originalString = "the quick";
-    const words = tokenize(originalString);
+    const words = tokenize(inputText);
 
     for (let i = 0; i < 10; i++) {
         const { word } = await predict(words.slice(-BEFORE_SIZE), wordPredictModel, vocabulary);
@@ -307,8 +325,24 @@ export const main = async () => {
         }
     }
 
+    return words.join(' ');
+};
+
+
+export const main = async () => {
+    const vocabulary = await getVocabulary();
+    const trainingData = await getTrainingData({ vocabulary });
+    const wordPredictModel = await getModel({ vocabulary, trainingData }) as LayersModel;
+
+    // Test model
+    const originalString = "the quick brown";
+    const result = await predictUntilEnd(originalString, {
+        vocabulary,
+        wordPredictModel
+    })
+
     minitest(wordPredictModel, vocabulary)
 
     console.log(`Original string:  ${originalString}`);
-    console.log(`Completed string: ${words.join(' ')}`);
+    console.log(`Completed string: ${result}`);
 };

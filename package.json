@@ -7,27 +7,32 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc --project tsconfig.json --outDir dist",
-        "testbench": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps dist/testbench.js",
+        "testbench": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps dist/src/testbench.js",
         "testbench:debug": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps debug dist/testbench.js",
-        "test": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps dist/tinyindex.js",
+        "test": "npm run build && npm run test-command",
+        "test-command": "mocha dist/test/**/*.js",
         "lint": "eslint . --ext .ts",
         "purgeVocabulary": "rm -rf data/vocabulary.json",
         "purgeTrainingData": "rm -rf data/trainingData.json",
         "purgeModel": "rm -rf data/wordPredictModel",
         "purge": "yarn run purgeTrainingData && yarn run purgeModel && yarn run purgeVocabulary",
-        "buildCorpus": "node --enable-source-maps dist/buildCorpus.js",
+        "buildCorpus": "node --enable-source-maps dist/src/buildCorpus.js",
         "tfjs:fix": "npm rebuild @tensorflow/tfjs-node --build-addon-from-source"
     },
     "dependencies": {
         "@tensorflow-models/universal-sentence-encoder": "^1.3.3",
         "@tensorflow/tfjs-node": "^4.2.0",
+        "@types/chai": "^4.3.4",
         "@types/lodash": "^4.14.191",
+        "@types/mocha": "^10.0.1",
         "@typescript-eslint/eslint-plugin": "^5.50.0",
         "@typescript-eslint/parser": "^5.50.0",
         "big-json": "^3.2.0",
+        "chai": "^4.3.7",
         "chokidar": "^3.5.3",
         "eslint": "^8.33.0",
         "lodash": "^4.17.21",
+        "mocha": "^10.2.0",
         "typescript": "^4.9.5"
     }
 }
