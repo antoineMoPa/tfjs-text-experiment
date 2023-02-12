@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, createWriteStream, createReadStream } from 'fs';
+import { readFileSync, existsSync, createWriteStream, createReadStream, readdirSync } from 'fs';
 import type { Tensor2D } from '@tensorflow/tfjs-core/dist/tensor';
 import type { Sequential } from '@tensorflow/tfjs-layers/dist/models';
 
@@ -9,11 +9,11 @@ import { LayersModel } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
 
 const BEFORE_SIZE = 2;
-const CORPUS_PATH = "data/data-corpus.txt";
+const CORPUS_PATH = "data/corpus";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 
 const tokenize = (text) => {
-    return text.split(' ');
+    return text.split(/[ \n]/);
 }
 
 type Vocabulary = {
@@ -58,10 +58,17 @@ async function getVocabulary(): Promise<Vocabulary> {
 async function buildVocabulary(): Promise<Vocabulary> {
     console.log('Building vocabulary');
     const t1 = performance.now();
-    let text = readFileSync(CORPUS_PATH).toString();
-    // hack
-    text = 'the quick brown fox jumps over the lazy dog';
-    const words: string[] = _.shuffle(_.uniq(tokenize(text)));
+
+    const texts = readdirSync(CORPUS_PATH);
+    let tokens = [];
+
+    for (const textFilename of texts) {
+        const text = readFileSync(CORPUS_PATH + '/' + textFilename).toString();
+        const newTokens = tokenize(text);
+        tokens = [...tokens, ...newTokens];
+    }
+
+    const words: string[] = _.shuffle(_.uniq(tokens));
     words.push('[END]');
     words.push('[NULL]');
     const t2 = performance.now();
@@ -141,32 +148,34 @@ const buildTrainingData = async (
     { vocabulary } :
     { vocabulary: Vocabulary }
 ): Promise<TrainingData> => {
-    let text = readFileSync(CORPUS_PATH).toString();
-    // HACK
-    text = 'the quick brown fox jumps over the lazy dog';
-    const words = tokenize(text);
-    words.push('[END]');
-    console.log({words})
+    const texts = readdirSync(CORPUS_PATH);
     const expectedOutputs = [];
     const inputs = [];
 
-    while (words.length > 1 && words.length > BEFORE_SIZE) {
-        const ngrams = [];
-        let i = 0;
-        for (; i < BEFORE_SIZE && words.length > 1; i++){
-            ngrams.push(words[i]);
+    for (const textFilename of texts) {
+        const text = readFileSync(CORPUS_PATH + '/' + textFilename).toString();
+        const words = tokenize(text);
+        words.push('[END]');
+        console.log({words})
+
+        while (words.length > 1 && words.length > BEFORE_SIZE) {
+            const ngrams = [];
+            let i = 0;
+            for (; i < BEFORE_SIZE && words.length > 1; i++){
+                ngrams.push(words[i]);
+            }
+
+            const expectedOutput = words[BEFORE_SIZE];
+            inputs.push(await words2Input(ngrams, vocabulary));
+
+            // We want to predict the next word based on previous words.
+            const index = findWordIndex(expectedOutput, vocabulary);
+            expectedOutputs.push(index);
+
+            console.log({ ngrams,  expectedOutput })
+
+            words.shift();
         }
-
-        const expectedOutput = words[BEFORE_SIZE];
-        inputs.push(await words2Input(ngrams, vocabulary));
-
-        // We want to predict the next word based on previous words.
-        const index = findWordIndex(expectedOutput, vocabulary);
-        expectedOutputs.push(index);
-
-        console.log({ ngrams,  expectedOutput })
-
-        words.shift();
     }
 
     return {
@@ -239,10 +248,9 @@ async function buildModel(
         batchSize: 10,
         callbacks: {
             onEpochEnd: async (epoch, logs) => {
-                await minitest(wordPredictModel, vocabulary);
-
                 if (epoch % 10 === 0) {
-                    console.log(`Epoch ${epoch}: error: ${logs.loss}`)
+                    console.log(`Epoch ${epoch}: error: ${logs.loss}`);
+                    await minitest(wordPredictModel, vocabulary);
                 }
             },
         },
