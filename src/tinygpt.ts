@@ -239,7 +239,7 @@ export async function buildModel(
     };
     const epochs = level_to_epochs[level];
 
-    const inputs = tf.layers.input({
+    const inputs = tf.input({
         shape: [(vocabulary.words.length) * beforeSize],
     });
 
@@ -247,31 +247,29 @@ export async function buildModel(
         units: (vocabulary.words.length) * beforeSize,
         activation: "swish",
         kernelInitializer: tf.initializers.randomNormal({}),
-        name: "input",
+        name: "denseLayer1",
     })
 
+    const denseLayer1Output = denseLayer1.apply(inputs) as SymbolicTensor;
+    let levelOutput = denseLayer1Output as SymbolicTensor;
+
     if (level > 0) {
-        // const denseLayer = tf.layers.dense({
-        //     units: 1000,
+        // const level1DenseLayer1 = tf.layers.dense({
+        //     units: 3,
         //     activation: "swish",
         //     kernelInitializer: tf.initializers.randomNormal({}),
-        //     name: "level-1-hidden-1",
+        //     name: "level1DenseLayer1",
         // });
         //
-        // const concat = tf.layers.concatenate();
-        // const combined = concat.apply([denseLayer, inputs]);
+        // const level1DenseLayer1Output = level1DenseLayer1.apply(denseLayer1Output) as SymbolicTensor;
+        //
+        // levelOutput = level1DenseLayer1Output as SymbolicTensor;
 
-        tf.layers.dense({
-            units: 1000,
-            activation: "swish",
-            kernelInitializer: tf.initializers.randomNormal({}),
-            name: "level-1-hidden-2",
-        })
-        // wordPredictModel.add(
-        //     tf.layers.dropout({
-        //         rate: 0.1
-        //     })
-        // );
+        // // Feed back the last word in input
+        // const concat = tf.layers.concatenate({ axis: 1 });
+        // const combined = concat.apply([level1DenseLayer1Output, inputs]);
+        //
+        // levelOutput = combined as SymbolicTensor;
     }
 
     const outputLayer = tf.layers.dense({
@@ -281,7 +279,7 @@ export async function buildModel(
         name: "output",
     });
 
-    const outputs = outputLayer.apply(denseLayer1.apply(inputs)) as SymbolicTensor;
+    const outputs = outputLayer.apply(levelOutput) as SymbolicTensor;
     const wordPredictModel =  tf.model({ inputs, outputs });
 
     verbose && wordPredictModel.summary();
@@ -341,7 +339,7 @@ type BuildModelFromTextArgs = {
 
 const LEVEL_TO_BEFORE_SIZE = {
     '0': 3,
-    '1': 8
+    '1': 3
 };
 
 export async function buildModelFromText({
