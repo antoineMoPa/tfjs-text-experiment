@@ -8,7 +8,6 @@ import { performance } from 'perf_hooks';
 import { LayersModel } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
 
-const BEFORE_SIZE = 3;
 const CORPUS_PATH = "data/corpus";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 
@@ -93,8 +92,8 @@ function wordIndexToOneHot(index: number, vocabulary: Vocabulary) {
 }
 
 async function getTrainingData(
-    { vocabulary } :
-    { vocabulary: Vocabulary }
+    { vocabulary, beforeSize } :
+    { vocabulary: Vocabulary, beforeSize: number }
 ): Promise<TrainingData> {
 
     const PATH = 'data/trainingData.json';
@@ -111,7 +110,10 @@ async function getTrainingData(
         });
     }
     else {
-        const data: TrainingData = await buildTrainingData({ vocabulary });
+        const data: TrainingData = await buildTrainingData({
+            vocabulary,
+            beforeSize
+        });
         console.log('Caching training data to disk');
         await new Promise<void>(resolve => {
             const stringifyStream = json.createStringifyStream({ body: data });
@@ -129,10 +131,10 @@ async function getTrainingData(
 }
 
 const minitest = async (wordPredictModel, vocabulary) => {
-    console.log(`should be brown: ${(await predict(['the', 'quick'], wordPredictModel, vocabulary)).word}`);
-    console.log(`should be fox: ${(await predict(['quick', 'brown'], wordPredictModel, vocabulary)).word}`);
-    console.log(`should be over: ${(await predict(['fox', 'jumps'], wordPredictModel, vocabulary)).word}`);
-    console.log(`should be the: ${(await predict(['jumps', 'over'], wordPredictModel, vocabulary)).word}`);
+    // console.log(`should be brown: ${(await predict(['the', 'quick'], wordPredictModel, vocabulary)).word}`);
+    // console.log(`should be fox: ${(await predict(['quick', 'brown'], wordPredictModel, vocabulary)).word}`);
+    // console.log(`should be over: ${(await predict(['fox', 'jumps'], wordPredictModel, vocabulary)).word}`);
+    // console.log(`should be the: ${(await predict(['jumps', 'over'], wordPredictModel, vocabulary)).word}`);
 };
 
 async function words2Input(ngrams, vocabulary) {
@@ -147,8 +149,8 @@ async function words2Input(ngrams, vocabulary) {
 }
 
 export const buildTrainingData = async (
-    { vocabulary, text } :
-    { vocabulary: Vocabulary, text?: string }
+    { vocabulary, text, beforeSize } :
+    { vocabulary: Vocabulary, text?: string, beforeSize: number }
 ): Promise<TrainingData> => {
     const expectedOutputs = [];
     const inputs = [];
@@ -157,14 +159,14 @@ export const buildTrainingData = async (
         const words = tokenize(text);
         words.push('[END]');
 
-        while (words.length > 1 && words.length > BEFORE_SIZE) {
+        while (words.length > 1 && words.length > beforeSize) {
             const ngrams = [];
             let i = 0;
-            for (; i < BEFORE_SIZE && words.length > 1; i++){
+            for (; i < beforeSize && words.length > 1; i++){
                 ngrams.push(words[i]);
             }
 
-            const expectedOutput = words[BEFORE_SIZE];
+            const expectedOutput = words[beforeSize];
             inputs.push(await words2Input(ngrams, vocabulary));
 
             // We want to predict the next word based on previous words.
@@ -193,31 +195,65 @@ export const buildTrainingData = async (
     };
 }
 
-export async function buildModel(
-    { vocabulary, trainingData, verbose } :
-    {
-        vocabulary: Vocabulary,
-        trainingData: TrainingData,
-        verbose?: boolean
-    } = {
-        vocabulary: undefined,
-        trainingData: undefined,
-        verbose: true
-    }
-) {
-    const EPOCHS = 100;
+type BuildModelArgs = {
+    vocabulary: Vocabulary,
+    trainingData: TrainingData,
+    verbose?: boolean,
+    level?: number,
+    /**
+     * Amount of tokens that the model is able to read in input
+     */
+    beforeSize: number,
+};
 
+/**
+ * buildModel
+ *
+ * Levels
+ * With each level, the model grows in capacity. Smaller = lighter
+ *
+ * Levels:
+ * 0: Able to remember 1 sentence
+ * 1: Able to remember 2 long sentences
+ *
+ */
+export async function buildModel(
+    {
+        vocabulary,
+        trainingData,
+        verbose,
+        level,
+        beforeSize
+    } :
+    BuildModelArgs
+) {
+    if (verbose === undefined) {
+        verbose = true;
+    }
+    if (level === undefined) {
+        level = 0;
+    }
+    const EPOCHS = 100;
     const wordPredictModel: Sequential = tf.sequential();
 
     wordPredictModel.add(
         tf.layers.dense({
-            inputShape: [(vocabulary.words.length) * BEFORE_SIZE],
-            units: (vocabulary.words.length) * BEFORE_SIZE,
-            activation: "softmax",
+            inputShape: [(vocabulary.words.length) * beforeSize],
+            units: (vocabulary.words.length) * beforeSize,
+            activation: "elu",
             kernelInitializer: tf.initializers.randomNormal({}),
             name: "input",
         })
     );
+
+    //wordPredictModel.add(
+    //    tf.layers.dense({
+    //        units: 60,
+    //        activation: "softmax",
+    //        kernelInitializer: tf.initializers.randomNormal({}),
+    //        name: "hidden",
+    //    })
+    //);
 
     wordPredictModel.add(
         tf.layers.dense({
@@ -251,9 +287,6 @@ export async function buildModel(
         value => wordIndexToOneHot(value, vocabulary)
     );
 
-    // eslin
-    debugger;
-
     verbose && console.log('Built training data!');
     verbose && console.log('Training word prediction model.');
 
@@ -276,8 +309,16 @@ export async function buildModel(
 }
 
 async function getModel(
-    { vocabulary, trainingData } :
-    { vocabulary: Vocabulary, trainingData: TrainingData }
+    {
+        vocabulary,
+        trainingData,
+        beforeSize
+    } :
+    {
+        vocabulary: Vocabulary,
+        trainingData: TrainingData,
+        beforeSize: number
+    }
 ) {
     try {
         const wordPredictModel = await tf.loadLayersModel(WORD_PREDICT_MODEL_CACHE + '/model.json');
@@ -286,20 +327,24 @@ async function getModel(
         console.log('Model not found/has error. Generating')
     }
 
-    return buildModel({ vocabulary, trainingData });
+    return buildModel({ vocabulary, trainingData, beforeSize });
 }
 
-export const predict = async (before, wordPredictModel, vocabulary: Vocabulary) => {
+export const predict = async (before, {
+    wordPredictModel,
+    vocabulary,
+    beforeSize
+}) => {
 
-    if (before.length < BEFORE_SIZE) {
-        console.error(`Before is not long enough. Got ${before.length}, expected ${BEFORE_SIZE}. We'll pad the input with [NULL]`);
+    if (before.length < beforeSize) {
+        console.error(`Before is not long enough. Got ${before.length}, expected ${beforeSize}. We'll pad the input with [NULL]`);
 
-        while (before.length !== BEFORE_SIZE) {
+        while (before.length !== beforeSize) {
             before = ['[NULL]', ...before];
         }
     }
 
-    const inputWords = await words2Input(before.slice(-BEFORE_SIZE), vocabulary);
+    const inputWords = await words2Input(before.slice(-beforeSize), vocabulary);
     const input = tf.concat(inputWords.map(value => wordIndexToOneHot(value, vocabulary)), 1);
     const prediction = wordPredictModel.predict(input) as Tensor2D;
 
@@ -312,17 +357,17 @@ export const predict = async (before, wordPredictModel, vocabulary: Vocabulary) 
 
 export const predictUntilEnd = async (inputText, {
     vocabulary,
-    wordPredictModel
+    wordPredictModel,
+    beforeSize
 }) => {
     // Test model
     const words = tokenize(inputText);
-
-    for (let i = 0; i < 10; i++) {
-        const { word } = await predict(words.slice(-BEFORE_SIZE), wordPredictModel, vocabulary);
+    const MAX = 100;
+    let lastword = null
+    for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
+        const { word } = await predict(words.slice(-beforeSize), { wordPredictModel, vocabulary, beforeSize});
         words.push(word);
-        if (word === '[END]') {
-            break;
-        }
+        lastword = word;
     }
 
     return words.join(' ');
@@ -331,14 +376,23 @@ export const predictUntilEnd = async (inputText, {
 
 export const main = async () => {
     const vocabulary = await getVocabulary();
-    const trainingData = await getTrainingData({ vocabulary });
-    const wordPredictModel = await getModel({ vocabulary, trainingData }) as LayersModel;
+    const beforeSize = 3;
+    const trainingData = await getTrainingData({
+        vocabulary,
+        beforeSize
+    });
+    const wordPredictModel = await getModel({
+        vocabulary,
+        trainingData,
+        beforeSize
+    }) as LayersModel;
 
     // Test model
     const originalString = "the quick brown";
     const result = await predictUntilEnd(originalString, {
         vocabulary,
-        wordPredictModel
+        wordPredictModel,
+        beforeSize
     })
 
     minitest(wordPredictModel, vocabulary)
