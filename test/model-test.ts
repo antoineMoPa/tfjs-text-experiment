@@ -81,7 +81,7 @@ describe('Model', async () => {
         const wordPredictModel = await buildModel({
             vocabulary,
             trainingData,
-            verbose: true,
+            verbose: false,
             beforeSize
         }) as LayersModel;
 
@@ -122,7 +122,7 @@ describe('Model', async () => {
         const text = 'Horses are adapted to run, allowing them to quickly escape predators, and possess an excellent sense of balance and a strong fight-or-flight response. Related to this need to flee from predators in the wild is an unusual trait: horses are able to sleep both standing up and lying down, with younger horses tending to sleep significantly more than adults.';
         const { wordPredictModel, vocabulary, beforeSize } = await buildModelFromText({
             text,
-            verbose: true,
+            verbose: false,
             level: 0,
         });
 
@@ -145,7 +145,7 @@ describe('Model', async () => {
 
         const { wordPredictModel, vocabulary, beforeSize } = await buildModelFromText({
             text,
-            verbose: true,
+            verbose: false,
             level: 1,
         });
 
@@ -167,7 +167,7 @@ describe('Model', async () => {
 
         const { wordPredictModel, vocabulary, beforeSize } = await buildModelFromText({
             text,
-            verbose: true,
+            verbose: false,
             level: 1,
         });
 

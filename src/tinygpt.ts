@@ -346,7 +346,7 @@ export async function buildModel(
         await wordPredictModel.fit(tf.concat(trainingInputs, 0), tf.concat(expectedOutputs, 0), {
             epochs,
             batchSize: 100,
-            verbose: verbose ? 1 : 0,
+            verbose: 0,
             callbacks: {
                 onEpochEnd: async (epoch, logs) => {
                     if (verbose && epoch % 10 === 0) {
@@ -356,11 +356,16 @@ export async function buildModel(
                 },
             },
         });
+
+        [...trainingInputs, ...expectedOutputs].forEach((tensor: Tensor2D) => tensor.dispose());
     };
 
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 10;
 
+    // Training data expands to a lot of memory. Split training so we don't have a lot
+    // at the time.
     for (let i = 0; i < meta_epochs; i++) {
+        verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
         for (let j = 0; j < trainingData.inputs.length; j += BATCH_SIZE) {
             await trainOnBatch(trainingData.inputs.slice(j, j + BATCH_SIZE), trainingData.expectedOutputs.slice(j, j + BATCH_SIZE));
         }
