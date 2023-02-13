@@ -107,7 +107,7 @@ type TrainingData = {
     expectedOutputs: number[];
 };
 
-function wordIndexToOneHot(index: number, vocabulary: Vocabulary) {
+export function wordIndexToOneHot(index: number, vocabulary: Vocabulary) {
     return tf.oneHot(tf.tensor1d([index], 'int32'), vocabulary.words.length);
 }
 
@@ -215,6 +215,104 @@ export const buildTrainingData = async (
     };
 }
 
+/**
+ * buildModel
+ *
+ * Levels
+ * With each level, the model grows in capacity. Smaller = lighter
+ *
+ * Levels:
+ * 0: Able to remember 1 sentence
+ * 1: Able to remember 2 long sentences
+ *
+ */
+export async function buildEncoderDecoder(
+    {
+        vocabulary
+    }: {
+        vocabulary: Vocabulary
+    }
+) {
+    const inputs = tf.input({
+        shape: [(vocabulary.words.length)],
+    });
+
+    const inputLayer = tf.layers.dense({
+        units: (vocabulary.words.length),
+        activation: "swish",
+        kernelInitializer: tf.initializers.randomNormal({}),
+        name: "inputLayer",
+    })
+
+    const denseLayer1Output = inputLayer.apply(inputs) as SymbolicTensor;
+
+    const preEncoderLayer = tf.layers.dense({
+        units: 20,
+        activation: "swish",
+        kernelInitializer: tf.initializers.randomNormal({}),
+        name: "preEncoderLayer",
+    })
+
+    const preEncoderLayerOutput = preEncoderLayer.apply(denseLayer1Output) as SymbolicTensor;
+
+    const encodedLayer = tf.layers.dense({
+        units: 10,
+        activation: "swish",
+        kernelInitializer: tf.initializers.randomNormal({}),
+        name: "encodedLayer",
+    })
+
+    const encodedLayerOutput = encodedLayer.apply(preEncoderLayerOutput) as SymbolicTensor;
+
+    const outputLayer = tf.layers.dense({
+        units: vocabulary.words.length,
+        activation: "softmax",
+        kernelInitializer: tf.initializers.randomNormal({}),
+        name: "output",
+    });
+
+    const outputs = outputLayer.apply(encodedLayerOutput) as SymbolicTensor;
+    const encoderDecoderModel =  tf.model({ inputs, outputs });
+
+    console.log('Compiling word prediction model.');
+
+    encoderDecoderModel.compile({
+        optimizer: tf.train.adamax(0.01),
+        loss: 'categoricalCrossentropy',
+    })
+
+    console.log('Building training data!\n\n');
+
+    const trainingInputs = [];
+    const expectedOutputs = [];
+
+    for (let i = 0; i < vocabulary.words.length; i++) {
+        trainingInputs.push(wordIndexToOneHot(i, vocabulary));
+        expectedOutputs.push(wordIndexToOneHot(i, vocabulary));
+    }
+
+    const concatenatedInput = tf.concat(trainingInputs, 0);
+    const concatenatedOutput = tf.concat(expectedOutputs, 0);
+
+    await encoderDecoderModel.fit(concatenatedInput, concatenatedOutput, {
+        epochs: 100,
+        batchSize: 2,
+        shuffle: true,
+        verbose: 0,
+    });
+
+    [
+        ...trainingInputs,
+        ...expectedOutputs,
+        concatenatedInput,
+        concatenatedOutput
+    ].forEach((tensor: Tensor2D) => tensor.dispose());
+
+
+    await encoderDecoderModel.save(WORD_PREDICT_MODEL_CACHE);
+    return encoderDecoderModel;
+}
+
 type BuildModelArgs = {
     vocabulary: Vocabulary,
     trainingData: TrainingData,
@@ -244,7 +342,7 @@ export async function buildModel(
         verbose,
         level,
         beforeSize
-    } :BuildModelArgs
+    } : BuildModelArgs
 ) {
     if (verbose === undefined) {
         verbose = true;
@@ -315,7 +413,6 @@ export async function buildModel(
     const outputs = outputLayer.apply(levelOutput) as SymbolicTensor;
     const wordPredictModel =  tf.model({ inputs, outputs });
 
-    verbose && wordPredictModel.summary();
     verbose && console.log('Compiling word prediction model.');
 
     const alpha = level_to_alpha[level];
