@@ -343,21 +343,21 @@ export async function buildModel(
         verbose && console.log('Built training data!');
         verbose && console.log('Training word prediction model.');
 
-        await wordPredictModel.fit(tf.concat(trainingInputs, 0), tf.concat(expectedOutputs, 0), {
+        const concatenatedInput = tf.concat(trainingInputs, 0);
+        const concatenatedOutput = tf.concat(expectedOutputs, 0);
+
+        await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
-            batchSize: 100,
+            batchSize: 10,
             verbose: 0,
-            callbacks: {
-                onEpochEnd: async (epoch, logs) => {
-                    if (verbose && epoch % 10 === 0) {
-                        console.log(`Epoch ${epoch}: error: ${logs.loss}`);
-                        await minitest(wordPredictModel, vocabulary);
-                    }
-                },
-            },
         });
 
-        [...trainingInputs, ...expectedOutputs].forEach((tensor: Tensor2D) => tensor.dispose());
+        [
+            ...trainingInputs,
+            ...expectedOutputs,
+            concatenatedInput,
+            concatenatedOutput
+        ].forEach((tensor: Tensor2D) => tensor.dispose());
     };
 
     const BATCH_SIZE = 10;
