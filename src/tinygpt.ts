@@ -254,9 +254,14 @@ export async function buildModel(
     }
 
     const level_to_epochs = {
-        '0': 100,
-        '1': 100,
-        '2': 100,
+        '0': 10,
+        '1': 10,
+        '2': 10,
+    };
+    const level_to_meta_epochs = {
+        '0': 10,
+        '1': 10,
+        '2': 10,
     };
     const level_to_alpha = {
         '0': 0.003,
@@ -265,6 +270,7 @@ export async function buildModel(
     };
 
     const epochs = level_to_epochs[level];
+    const meta_epochs = level_to_meta_epochs[level];
 
     const inputs = tf.input({
         shape: [(vocabulary.words.length) * beforeSize],
@@ -321,34 +327,44 @@ export async function buildModel(
 
     verbose && console.log('Building training data!\n\n');
 
-    const trainingInputs = trainingData.inputs.map(
-        sample => {
-            const data = tf.concat(
-                sample.map(value => wordIndexToOneHot(value, vocabulary)), 1
-            );
-            return data;
-        }
-    );
-    const expectedOutputs = trainingData.expectedOutputs.map(
-        value => wordIndexToOneHot(value, vocabulary)
-    );
+    const trainOnBatch = async (inputs, outputs) => {
+        const trainingInputs = inputs.map(
+            sample => {
+                const data = tf.concat(
+                    sample.map(value => wordIndexToOneHot(value, vocabulary)), 1
+                );
+                return data;
+            }
+        );
+        const expectedOutputs = outputs.map(
+            value => wordIndexToOneHot(value, vocabulary)
+        );
 
-    verbose && console.log('Built training data!');
-    verbose && console.log('Training word prediction model.');
+        verbose && console.log('Built training data!');
+        verbose && console.log('Training word prediction model.');
 
-    await wordPredictModel.fit(tf.concat(trainingInputs, 0), tf.concat(expectedOutputs, 0), {
-        epochs,
-        batchSize: 10,
-        verbose: verbose ? 1 : 0,
-        callbacks: {
-            onEpochEnd: async (epoch, logs) => {
-                if (verbose && epoch % 10 === 0) {
-                    console.log(`Epoch ${epoch}: error: ${logs.loss}`);
-                    await minitest(wordPredictModel, vocabulary);
-                }
+        await wordPredictModel.fit(tf.concat(trainingInputs, 0), tf.concat(expectedOutputs, 0), {
+            epochs,
+            batchSize: 100,
+            verbose: verbose ? 1 : 0,
+            callbacks: {
+                onEpochEnd: async (epoch, logs) => {
+                    if (verbose && epoch % 10 === 0) {
+                        console.log(`Epoch ${epoch}: error: ${logs.loss}`);
+                        await minitest(wordPredictModel, vocabulary);
+                    }
+                },
             },
-        },
-    });
+        });
+    };
+
+    const BATCH_SIZE = 100;
+
+    for (let i = 0; i < meta_epochs; i++) {
+        for (let j = 0; j < trainingData.inputs.length; j += BATCH_SIZE) {
+            await trainOnBatch(trainingData.inputs.slice(j, j + BATCH_SIZE), trainingData.expectedOutputs.slice(j, j + BATCH_SIZE));
+        }
+    }
 
     await wordPredictModel.save(WORD_PREDICT_MODEL_CACHE);
     return wordPredictModel;
