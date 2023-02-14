@@ -20,7 +20,7 @@ describe('Vocabulary EncoderDecoder', async () => {
         const vocabulary = await buildVocabulary(text);
 
         // Act
-        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary });
+        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
         const word0 = wordIndexToOneHot(0, vocabulary);
         const decoded = encoderDecoder.predict(word0) as Tensor2D;
         const tokenIndex = tf.argMax(decoded, 1).dataSync()[0];
@@ -35,7 +35,7 @@ describe('Vocabulary EncoderDecoder', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = await buildVocabulary(text);
-        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary });
+        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
 
         // Act
         const encoded = [];
@@ -60,7 +60,7 @@ describe('Vocabulary EncoderDecoder', async () => {
         // Arrange
         const text = twoParagraphs;
         const vocabulary = await buildVocabulary(text);
-        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary });
+        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
 
         // Act
         const encoded = [];
@@ -85,7 +85,7 @@ describe('Vocabulary EncoderDecoder', async () => {
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
         const vocabulary = await buildVocabulary(text);
-        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary });
+        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 80 });
 
         // Act
         const encoded = [];
@@ -112,7 +112,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Arrange
         const vocabulary = await buildVocabulary();
-        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary });
+        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 128 });
 
         // Act
         const encoded = [];

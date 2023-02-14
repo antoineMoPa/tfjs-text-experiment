@@ -215,9 +215,11 @@ export const buildTrainingData = async (
 
 export async function buildEncoderDecoder(
     {
-        vocabulary
+        vocabulary,
+        encodingSize = 128
     }: {
-        vocabulary: Vocabulary
+        vocabulary: Vocabulary;
+        encodingSize?: number;
     }
 ) {
     const bigVocab = vocabulary.words.length > 100;
@@ -226,7 +228,7 @@ export async function buildEncoderDecoder(
     });
 
     const encoderLayer = tf.layers.dense({
-        units: bigVocab ? 128 : 30,
+        units: encodingSize,
         activation: "swish",
         kernelInitializer: tf.initializers.randomNormal({}),
         name: "encodedLayer",
