@@ -7,7 +7,7 @@ import { performance } from 'perf_hooks';
 import { LayersModel, SymbolicTensor } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
 
-const CORPUS_PATH = "data/corpus";
+export const CORPUS_PATH = "data/corpus";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
 
 export const tokenize = (text:string) => {
@@ -67,13 +67,11 @@ async function getVocabulary(): Promise<Vocabulary> {
                 resolve();
             });
         });
-        console.log('Done!');
         return data;
     }
 }
 
 export async function buildVocabulary(text?: string): Promise<Vocabulary> {
-    console.log('Building vocabulary');
     const t1 = performance.now();
     let tokens = [];
 
@@ -215,17 +213,6 @@ export const buildTrainingData = async (
     };
 }
 
-/**
- * buildModel
- *
- * Levels
- * With each level, the model grows in capacity. Smaller = lighter
- *
- * Levels:
- * 0: Able to remember 1 sentence
- * 1: Able to remember 2 long sentences
- *
- */
 export async function buildEncoderDecoder(
     {
         vocabulary
@@ -233,36 +220,19 @@ export async function buildEncoderDecoder(
         vocabulary: Vocabulary
     }
 ) {
+    const bigVocab = vocabulary.words.length > 100;
     const inputs = tf.input({
         shape: [(vocabulary.words.length)],
     });
 
-    const inputLayer = tf.layers.dense({
-        units: (vocabulary.words.length),
-        activation: "swish",
-        kernelInitializer: tf.initializers.randomNormal({}),
-        name: "inputLayer",
-    })
-
-    const denseLayer1Output = inputLayer.apply(inputs) as SymbolicTensor;
-
-    const preEncoderLayer = tf.layers.dense({
-        units: 20,
-        activation: "swish",
-        kernelInitializer: tf.initializers.randomNormal({}),
-        name: "preEncoderLayer",
-    })
-
-    const preEncoderLayerOutput = preEncoderLayer.apply(denseLayer1Output) as SymbolicTensor;
-
     const encodedLayer = tf.layers.dense({
-        units: 10,
+        units: bigVocab ? 100 : 30,
         activation: "swish",
         kernelInitializer: tf.initializers.randomNormal({}),
         name: "encodedLayer",
     })
 
-    const encodedLayerOutput = encodedLayer.apply(preEncoderLayerOutput) as SymbolicTensor;
+    const encodedLayerOutput = encodedLayer.apply(inputs) as SymbolicTensor;
 
     const outputLayer = tf.layers.dense({
         units: vocabulary.words.length,
@@ -274,14 +244,10 @@ export async function buildEncoderDecoder(
     const outputs = outputLayer.apply(encodedLayerOutput) as SymbolicTensor;
     const encoderDecoderModel =  tf.model({ inputs, outputs });
 
-    console.log('Compiling word prediction model.');
-
     encoderDecoderModel.compile({
-        optimizer: tf.train.adamax(0.01),
+        optimizer: tf.train.adamax(0.008),
         loss: 'categoricalCrossentropy',
     })
-
-    console.log('Building training data!\n\n');
 
     const trainingInputs = [];
     const expectedOutputs = [];
@@ -293,12 +259,13 @@ export async function buildEncoderDecoder(
 
     const concatenatedInput = tf.concat(trainingInputs, 0);
     const concatenatedOutput = tf.concat(expectedOutputs, 0);
+    const epochs = vocabulary.words.length < 100 ? 100: 40;
 
     await encoderDecoderModel.fit(concatenatedInput, concatenatedOutput, {
-        epochs: 100,
-        batchSize: 2,
+        epochs,
+        batchSize: 300,
         shuffle: true,
-        verbose: 0,
+        verbose: bigVocab ? 1 : 0,
     });
 
     [
@@ -413,16 +380,12 @@ export async function buildModel(
     const outputs = outputLayer.apply(levelOutput) as SymbolicTensor;
     const wordPredictModel =  tf.model({ inputs, outputs });
 
-    verbose && console.log('Compiling word prediction model.');
-
     const alpha = level_to_alpha[level];
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
         loss: 'categoricalCrossentropy',
     })
-
-    verbose && console.log('Building training data!\n\n');
 
     const trainOnBatch = async (inputs, outputs) => {
         const trainingInputs = inputs.map(
@@ -436,9 +399,6 @@ export async function buildModel(
         const expectedOutputs = outputs.map(
             value => wordIndexToOneHot(value, vocabulary)
         );
-
-        verbose && console.log('Built training data!');
-        verbose && console.log('Training word prediction model.');
 
         const concatenatedInput = tf.concat(trainingInputs, 0);
         const concatenatedOutput = tf.concat(expectedOutputs, 0);
