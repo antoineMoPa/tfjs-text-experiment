@@ -226,7 +226,7 @@ export async function buildEncoderDecoder(
     });
 
     const encodedLayer = tf.layers.dense({
-        units: bigVocab ? 100 : 30,
+        units: bigVocab ? 128 : 30,
         activation: "swish",
         kernelInitializer: tf.initializers.randomNormal({}),
         name: "encodedLayer",
@@ -245,7 +245,7 @@ export async function buildEncoderDecoder(
     const encoderDecoderModel =  tf.model({ inputs, outputs });
 
     encoderDecoderModel.compile({
-        optimizer: tf.train.adamax(0.008),
+        optimizer: tf.train.adamax(0.05),
         loss: 'categoricalCrossentropy',
     })
 
@@ -259,11 +259,11 @@ export async function buildEncoderDecoder(
 
     const concatenatedInput = tf.concat(trainingInputs, 0);
     const concatenatedOutput = tf.concat(expectedOutputs, 0);
-    const epochs = vocabulary.words.length < 100 ? 100: 40;
+    const epochs = vocabulary.words.length < 100 ? 100: 8;
 
     await encoderDecoderModel.fit(concatenatedInput, concatenatedOutput, {
         epochs,
-        batchSize: 300,
+        batchSize: 1500,
         shuffle: true,
         verbose: bigVocab ? 1 : 0,
     });
