@@ -225,14 +225,14 @@ export async function buildEncoderDecoder(
         shape: [(vocabulary.words.length)],
     });
 
-    const encodedLayer = tf.layers.dense({
+    const encoderLayer = tf.layers.dense({
         units: bigVocab ? 128 : 30,
         activation: "swish",
         kernelInitializer: tf.initializers.randomNormal({}),
         name: "encodedLayer",
     })
 
-    const encodedLayerOutput = encodedLayer.apply(inputs) as SymbolicTensor;
+    const encodedLayerOutput = encoderLayer.apply(inputs) as SymbolicTensor;
 
     const outputLayer = tf.layers.dense({
         units: vocabulary.words.length,
@@ -242,9 +242,9 @@ export async function buildEncoderDecoder(
     });
 
     const outputs = outputLayer.apply(encodedLayerOutput) as SymbolicTensor;
-    const encoderDecoderModel =  tf.model({ inputs, outputs });
+    const encoderDecoder =  tf.model({ inputs, outputs });
 
-    encoderDecoderModel.compile({
+    encoderDecoder.compile({
         optimizer: tf.train.adamax(0.05),
         loss: 'categoricalCrossentropy',
     })
@@ -261,7 +261,7 @@ export async function buildEncoderDecoder(
     const concatenatedOutput = tf.concat(expectedOutputs, 0);
     const epochs = vocabulary.words.length < 100 ? 100: 8;
 
-    await encoderDecoderModel.fit(concatenatedInput, concatenatedOutput, {
+    await encoderDecoder.fit(concatenatedInput, concatenatedOutput, {
         epochs,
         batchSize: 1500,
         shuffle: true,
@@ -275,9 +275,9 @@ export async function buildEncoderDecoder(
         concatenatedOutput
     ].forEach((tensor: Tensor2D) => tensor.dispose());
 
+    await encoderDecoder.save(WORD_PREDICT_MODEL_CACHE);
 
-    await encoderDecoderModel.save(WORD_PREDICT_MODEL_CACHE);
-    return encoderDecoderModel;
+    return { encoderDecoder, encoderLayer };
 }
 
 type BuildModelArgs = {
