@@ -1,4 +1,5 @@
 import { LayersModel } from '@tensorflow/tfjs-node';
+import { readFileSync } from 'fs';
 
 import {
     tokenize,
@@ -7,14 +8,15 @@ import {
     buildModel,
     predict,
     predictUntilEnd,
-    buildModelFromText
+    buildModelFromText,
+    CORPUS_PATH
 } from '../src/tinygpt';
 
 import { expect } from 'chai';
 
 import { twoParagraphs } from './testText';
 
-describe.only('Model', async () => {
+describe('Model', async () => {
     it('Should build a vocabulary', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
@@ -208,6 +210,37 @@ describe.only('Model', async () => {
     });
 
     it('Should remember multiple paragraphs', async function() {
+        this.timeout(20000);
+        // Arrange
+        const text = twoParagraphs;
+
+        const {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            encodeWordIndexCache,
+        } = await buildModelFromText({
+            text,
+            verbose: false,
+            level: 1,
+            encodingSize: 50,
+        });
+
+        // Act
+        const sentence = await predictUntilEnd("Horse breeds are loosely divided into", {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer,
+            encodeWordIndexCache
+        })
+
+        // Assert
+        expect(sentence).to.equal((text + '[END]'));
+    });
+
+    it('Should remember an entire paragraphs', async function() {
         this.timeout(20000);
         // Arrange
         const text = twoParagraphs;

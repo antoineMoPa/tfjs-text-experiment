@@ -385,14 +385,13 @@ export async function buildModel(
         level = 1;
     }
 
-    // We can delete levels if the next level is more efficient and more compact.
     const level_to_epochs = {
         '1': 4,
-        '2': 10,
+        '2': 3,
     };
     const level_to_meta_epochs = {
         '1': 5,
-        '2': 10,
+        '2': 2,
     };
     const level_to_batch_size = {
         '1': 10,
@@ -400,15 +399,15 @@ export async function buildModel(
     };
     const level_to_meta_batch_size = {
         '1': 10,
-        '2': 10,
+        '2': 30,
     };
     const level_to_alpha = {
         '1': 0.0015,
-        '2': 0.003
+        '2': 0.0015
     };
     const level_to_denseLayer1_size = {
         '1': 1500,
-        '2': 8000
+        '2': 5000
     };
 
     const epochs = level_to_epochs[level];
@@ -427,7 +426,7 @@ export async function buildModel(
     const denseLayer1Output = denseLayer1.apply(inputs) as SymbolicTensor;
     let levelOutput = denseLayer1Output as SymbolicTensor;
 
-    if (level > 1) {
+    if (level > 2) {
         const level1DenseLayer1 = tf.layers.dense({
             units: 6000,
             activation: "swish",
@@ -482,6 +481,7 @@ export async function buildModel(
             epochs,
             batchSize,
             verbose: 0,
+            shuffle: false
         });
 
         [
@@ -504,8 +504,19 @@ export async function buildModel(
     for (let i = 0; i < meta_epochs; i++) {
         verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
         for (let j = 0; j < trainingData.inputs.length; j += metaBatchSize) {
+            verbose && console.log(`Batch ${j} of ${trainingData.inputs.length}`);
             await trainOnBatch(trainingData.inputs.slice(j, j + metaBatchSize),
                                trainingData.expectedOutputs.slice(j, j + metaBatchSize));
+
+
+            // const str = await predictUntilEnd('The horse has evolved over the', {
+            //     vocabulary,
+            //     wordPredictModel,
+            //     beforeSize,
+            //     encoderLayer,
+            //     encodeWordIndexCache
+            // });
+            // console.log(`The horse has evolved over the$: ${str}`);
         }
     }
 
@@ -524,7 +535,7 @@ type BuildModelFromTextArgs = {
 const LEVEL_TO_BEFORE_SIZE = {
     '0': 3,
     '1': 5,
-    '2': 10,
+    '2': 8,
 };
 
 export async function buildModelFromText({
@@ -571,14 +582,20 @@ async function getModel(
         beforeSize: number
     }
 ) {
-    try {
-        const wordPredictModel = await tf.loadLayersModel(WORD_PREDICT_MODEL_CACHE + '/model.json');
-        return wordPredictModel;
-    } catch (e) {
-        console.log('Model not found/has error. Generating')
-    }
+    //try {
+    //    const wordPredictModel = await tf.loadLayersModel(WORD_PREDICT_MODEL_CACHE + '/model.json');
+    //    return wordPredictModel;
+    //} catch (e) {
+    //    console.log('Model not found/has error. Generating')
+    //}
 
-    return buildModel({ vocabulary, trainingData, beforeSize });
+    return buildModel({
+        vocabulary,
+        trainingData,
+        beforeSize,
+        level: 2,
+        verbose: true,
+    });
 }
 
 export const predict = async (before, {
