@@ -382,37 +382,32 @@ export async function buildModel(
         verbose = true;
     }
     if (level === undefined) {
-        level = 0;
+        level = 1;
     }
 
+    // We can delete levels if the next level is more efficient and more compact.
     const level_to_epochs = {
-        '0': 10,
-        '1': 10,
-        '2': 10,
-    };
-    const level_to_meta_epochs = {
-        '0': 10,
         '1': 4,
         '2': 10,
     };
+    const level_to_meta_epochs = {
+        '1': 5,
+        '2': 10,
+    };
     const level_to_batch_size = {
-        '0': 10,
         '1': 10,
         '2': 10,
     };
     const level_to_meta_batch_size = {
-        '0': 10,
         '1': 10,
         '2': 10,
     };
     const level_to_alpha = {
-        '0': 0.003,
-        '1': 0.001,
+        '1': 0.0015,
         '2': 0.003
     };
     const level_to_denseLayer1_size = {
-        '0': 3000,
-        '1': 3500,
+        '1': 1500,
         '2': 8000
     };
 

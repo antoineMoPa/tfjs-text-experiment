@@ -127,12 +127,12 @@ describe.only('Model', async () => {
         } = await buildModelFromText({
             text,
             verbose: true,
-            level: 0,
-            encodingSize: 50
+            level: 1,
+            encodingSize: 20
         });
 
         // Act
-        const sentence = await predictUntilEnd("The horse has", {
+        const sentence = await predictUntilEnd("The horse has evolved over", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -158,7 +158,7 @@ describe.only('Model', async () => {
         } = await buildModelFromText({
             text,
             verbose: false,
-            level: 0,
+            level: 1,
             encodingSize: 64
         });
 
