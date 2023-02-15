@@ -6,9 +6,12 @@ import * as _ from 'lodash';
 import { performance } from 'perf_hooks';
 import { LayersModel, SymbolicTensor } from '@tensorflow/tfjs-node';
 import * as json from 'big-json';
+import * as LRU from 'lru-cache';
 
 export const CORPUS_PATH = "data/corpus";
 const WORD_PREDICT_MODEL_CACHE = 'file://data/wordPredictModel';
+
+type WordIndexCache = LRU<string, tf.Tensor>;
 
 export const tokenize = (text:string) => {
     const tokens = [];
@@ -277,6 +280,29 @@ export async function buildEncoderDecoder(
         concatenatedOutput
     ].forEach((tensor: Tensor2D) => tensor.dispose());
 
+    // Measure encoding/decoding success rate
+    const encoded = [];
+    const decoded = [];
+    let success = 0;
+
+    for (let i = 0; i < vocabulary.words.length; i++){
+        const word = wordIndexToOneHot(i, vocabulary);
+        const prediction = encoderDecoder.predict(word) as Tensor2D;
+        const tokenIndex = tf.argMax(prediction, 1).dataSync()[0] as number;
+
+        encoded.push(i);
+        decoded.push(tokenIndex);
+
+        (i === tokenIndex) && success++;
+    }
+
+    // Assert
+    const total = vocabulary.words.length;
+    console.log(`Encoder/Decoder success rate: (${(success/total * 100).toFixed(0)}%)`);
+    if (success !== total) {
+        throw new Error('Encoder/Decoder was not successful at encoding vocabulary.');
+    }
+
     await encoderDecoder.save(WORD_PREDICT_MODEL_CACHE);
 
     return { encoderDecoder, encoderLayer };
@@ -291,6 +317,33 @@ type BuildModelArgs = {
      * Amount of tokens that the model is able to read in input
      */
     beforeSize: number,
+    encodingSize?: number
+};
+
+const encodeWordIndex = (
+    index: number,
+    {
+        vocabulary,
+        encoderLayer,
+        encodeWordIndexCache
+    } : {
+        vocabulary: Vocabulary;
+        encoderLayer: tf.layers.Layer;
+        encodeWordIndexCache: WordIndexCache;
+    }
+) => {
+    const key = `${index}-${vocabulary.words.length}`;
+    if (encodeWordIndexCache.has(key)) {
+        return encodeWordIndexCache.get(key);
+    }
+    else {
+        const oneHot = wordIndexToOneHot(index, vocabulary);
+        const result = encoderLayer.apply(oneHot);
+        oneHot.dispose();
+
+        encodeWordIndexCache.set(key, result as tf.Tensor);
+        return result;
+    }
 };
 
 /**
@@ -310,9 +363,21 @@ export async function buildModel(
         trainingData,
         verbose,
         level,
-        beforeSize
+        beforeSize,
+        encodingSize = 128
     } : BuildModelArgs
-) {
+): Promise<{
+    wordPredictModel: tf.LayersModel;
+    encoderLayer: tf.layers.Layer;
+    encodeWordIndexCache: WordIndexCache;
+}> {
+    const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
+        max: 1000,
+        dispose(value: tf.Tensor) {
+            value.dispose();
+        }
+    })
+
     if (verbose === undefined) {
         verbose = true;
     }
@@ -327,49 +392,57 @@ export async function buildModel(
     };
     const level_to_meta_epochs = {
         '0': 10,
+        '1': 4,
+        '2': 10,
+    };
+    const level_to_batch_size = {
+        '0': 10,
+        '1': 10,
+        '2': 10,
+    };
+    const level_to_meta_batch_size = {
+        '0': 10,
         '1': 10,
         '2': 10,
     };
     const level_to_alpha = {
         '0': 0.003,
-        '1': 0.003,
+        '1': 0.001,
         '2': 0.003
+    };
+    const level_to_denseLayer1_size = {
+        '0': 3000,
+        '1': 3500,
+        '2': 8000
     };
 
     const epochs = level_to_epochs[level];
     const meta_epochs = level_to_meta_epochs[level];
-
     const inputs = tf.input({
-        shape: [(vocabulary.words.length) * beforeSize],
+        shape: [encodingSize * beforeSize],
     });
 
     const denseLayer1 = tf.layers.dense({
-        units: (vocabulary.words.length) * beforeSize,
+        units: level_to_denseLayer1_size[level],
         activation: "swish",
         kernelInitializer: tf.initializers.randomNormal({}),
         name: "denseLayer1",
     })
 
     const denseLayer1Output = denseLayer1.apply(inputs) as SymbolicTensor;
-    const levelOutput = denseLayer1Output as SymbolicTensor;
+    let levelOutput = denseLayer1Output as SymbolicTensor;
 
-    if (level > 0) {
-        // const level1DenseLayer1 = tf.layers.dense({
-        //     units: 3,
-        //     activation: "swish",
-        //     kernelInitializer: tf.initializers.randomNormal({}),
-        //     name: "level1DenseLayer1",
-        // });
-        //
-        // const level1DenseLayer1Output = level1DenseLayer1.apply(denseLayer1Output) as SymbolicTensor;
-        //
-        // levelOutput = level1DenseLayer1Output as SymbolicTensor;
+    if (level > 1) {
+        const level1DenseLayer1 = tf.layers.dense({
+            units: 6000,
+            activation: "swish",
+            kernelInitializer: tf.initializers.randomNormal({}),
+            name: "level1DenseLayer1",
+        });
 
-        // // Feed back the last word in input
-        // const concat = tf.layers.concatenate({ axis: 1 });
-        // const combined = concat.apply([level1DenseLayer1Output, inputs]);
-        //
-        // levelOutput = combined as SymbolicTensor;
+        const level1DenseLayer1Output = level1DenseLayer1.apply(denseLayer1Output) as SymbolicTensor;
+
+        levelOutput = level1DenseLayer1Output as SymbolicTensor;
     }
 
     const outputLayer = tf.layers.dense({
@@ -389,11 +462,15 @@ export async function buildModel(
         loss: 'categoricalCrossentropy',
     })
 
+    const { encoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
+
+
     const trainOnBatch = async (inputs, outputs) => {
         const trainingInputs = inputs.map(
             sample => {
                 const data = tf.concat(
-                    sample.map(value => wordIndexToOneHot(value, vocabulary)), 1
+                    sample.map(value => encodeWordIndex(value, { vocabulary, encoderLayer, encodeWordIndexCache })),
+                    1
                 );
                 return data;
             }
@@ -404,10 +481,11 @@ export async function buildModel(
 
         const concatenatedInput = tf.concat(trainingInputs, 0);
         const concatenatedOutput = tf.concat(expectedOutputs, 0);
+        const batchSize = level_to_batch_size[level];
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
-            batchSize: 10,
+            batchSize,
             verbose: 0,
         });
 
@@ -419,25 +497,33 @@ export async function buildModel(
         ].forEach((tensor: Tensor2D) => tensor.dispose());
     };
 
-    const BATCH_SIZE = 10;
+    // To save memory and process all corpus,
+    // we fit the model on parts of the corpus and repeat the process.
+    // So in addition to batching and epochs in wordPredictModel.fit,
+    // We have batches and epochs at this higher level,
+    // which is where the "meta" comes from.
+    const metaBatchSize = level_to_meta_batch_size[level];
 
     // Training data expands to a lot of memory. Split training so we don't have a lot
     // at the time.
     for (let i = 0; i < meta_epochs; i++) {
         verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
-        for (let j = 0; j < trainingData.inputs.length; j += BATCH_SIZE) {
-            await trainOnBatch(trainingData.inputs.slice(j, j + BATCH_SIZE), trainingData.expectedOutputs.slice(j, j + BATCH_SIZE));
+        for (let j = 0; j < trainingData.inputs.length; j += metaBatchSize) {
+            await trainOnBatch(trainingData.inputs.slice(j, j + metaBatchSize),
+                               trainingData.expectedOutputs.slice(j, j + metaBatchSize));
         }
     }
 
     await wordPredictModel.save(WORD_PREDICT_MODEL_CACHE);
-    return wordPredictModel;
+
+    return { wordPredictModel, encoderLayer, encodeWordIndexCache };
 }
 
 type BuildModelFromTextArgs = {
     text?: string,
     verbose?: boolean,
     level?: number,
+    encodingSize?: number
 };
 
 const LEVEL_TO_BEFORE_SIZE = {
@@ -450,6 +536,7 @@ export async function buildModelFromText({
     text,
     verbose,
     level,
+    encodingSize
 } : BuildModelFromTextArgs) {
     const beforeSize: number = LEVEL_TO_BEFORE_SIZE[level];
     const vocabulary = await buildVocabulary(text);
@@ -459,18 +546,21 @@ export async function buildModelFromText({
         beforeSize,
     });
 
-    const wordPredictModel = await buildModel({
+    const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({
         vocabulary,
         trainingData,
         verbose,
         level,
-        beforeSize
+        beforeSize,
+        encodingSize
     });
 
     return {
         wordPredictModel,
         vocabulary,
-        beforeSize
+        beforeSize,
+        encoderLayer,
+        encodeWordIndexCache
     };
 }
 
@@ -499,7 +589,15 @@ async function getModel(
 export const predict = async (before, {
     wordPredictModel,
     vocabulary,
-    beforeSize
+    beforeSize,
+    encoderLayer,
+    encodeWordIndexCache
+}: {
+    wordPredictModel: tf.LayersModel,
+    vocabulary: Vocabulary,
+    beforeSize: number,
+    encoderLayer: tf.layers.Layer,
+    encodeWordIndexCache: WordIndexCache
 }) => {
 
     if (before.length < beforeSize) {
@@ -511,7 +609,19 @@ export const predict = async (before, {
     }
 
     const inputWords = await words2Input(before.slice(-beforeSize), vocabulary);
-    const input = tf.concat(inputWords.map(value => wordIndexToOneHot(value, vocabulary)), 1);
+
+    const input = tf.concat(inputWords.map(
+        value =>
+            encodeWordIndex(
+                value,
+                {
+                    vocabulary,
+                    encoderLayer,
+                    encodeWordIndexCache: encodeWordIndexCache
+                }
+            ) as tf.Tensor
+    ), 1);
+
     const prediction = wordPredictModel.predict(input) as Tensor2D;
 
     const token= tf.argMax(prediction, 1).dataSync()[0];
@@ -524,14 +634,22 @@ export const predict = async (before, {
 export const predictUntilEnd = async (inputText, {
     vocabulary,
     wordPredictModel,
-    beforeSize
+    beforeSize,
+    encoderLayer,
+    encodeWordIndexCache
 }) => {
     // Test model
     const words = tokenize(inputText);
     const MAX = 200;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
-        const { word } = await predict(words.slice(-beforeSize), { wordPredictModel, vocabulary, beforeSize});
+        const { word } = await predict(words.slice(-beforeSize), {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            encodeWordIndexCache
+        });
         words.push(word);
         lastword = word;
     }
@@ -547,18 +665,20 @@ export const main = async () => {
         vocabulary,
         beforeSize
     });
-    const wordPredictModel = await getModel({
+    const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await getModel({
         vocabulary,
         trainingData,
-        beforeSize
-    }) as LayersModel;
+        beforeSize,
+    }) as any;
 
     // Test model
     const originalString = "the quick brown";
     const result = await predictUntilEnd(originalString, {
         vocabulary,
         wordPredictModel,
-        beforeSize
+        beforeSize,
+        encoderLayer,
+        encodeWordIndexCache
     })
 
     minitest(wordPredictModel, vocabulary)
