@@ -387,7 +387,7 @@ export async function buildModel(
 
     const level_to_epochs = {
         '1': 4,
-        '2': 3,
+        '2': 1,
     };
     const level_to_meta_epochs = {
         '1': 5,
@@ -395,19 +395,19 @@ export async function buildModel(
     };
     const level_to_batch_size = {
         '1': 10,
-        '2': 10,
+        '2': 20,
     };
     const level_to_meta_batch_size = {
         '1': 10,
-        '2': 30,
+        '2': 100,
     };
     const level_to_alpha = {
         '1': 0.0015,
-        '2': 0.0015
+        '2': 0.001
     };
     const level_to_denseLayer1_size = {
         '1': 1500,
-        '2': 5000
+        '2': 3000
     };
 
     const epochs = level_to_epochs[level];
@@ -458,7 +458,6 @@ export async function buildModel(
 
     const { encoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
 
-
     const trainOnBatch = async (inputs, outputs) => {
         const trainingInputs = inputs.map(
             sample => {
@@ -504,20 +503,19 @@ export async function buildModel(
     for (let i = 0; i < meta_epochs; i++) {
         verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
         for (let j = 0; j < trainingData.inputs.length; j += metaBatchSize) {
-            verbose && console.log(`Batch ${j} of ${trainingData.inputs.length}`);
             await trainOnBatch(trainingData.inputs.slice(j, j + metaBatchSize),
                                trainingData.expectedOutputs.slice(j, j + metaBatchSize));
 
 
-            // const str = await predictUntilEnd('The horse has evolved over the', {
-            //     vocabulary,
-            //     wordPredictModel,
-            //     beforeSize,
-            //     encoderLayer,
-            //     encodeWordIndexCache
-            // });
-            // console.log(`The horse has evolved over the$: ${str}`);
         }
+        const str = await predictUntilEnd('The horse has evolved over the', {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer,
+            encodeWordIndexCache
+        });
+        verbose && console.log(`${str}`);
     }
 
     await wordPredictModel.save(WORD_PREDICT_MODEL_CACHE);

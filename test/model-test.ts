@@ -270,4 +270,35 @@ describe('Model', async () => {
         // Assert
         expect(sentence).to.equal((text + '[END]'));
     });
+
+    it.skip('Should parse and entire article and output horse information.', async function() {
+        this.timeout(20000);
+        // Arrange
+        const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
+
+        const {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            encodeWordIndexCache,
+        } = await buildModelFromText({
+            text,
+            verbose: true,
+            level: 2,
+            encodingSize: 128,
+        });
+
+        // Act
+        const sentence = await predictUntilEnd("Horse breeds are loosely divided into", {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer,
+            encodeWordIndexCache
+        })
+
+        // Assert
+        expect(sentence).to.equal((text + '[END]'));
+    });
 });
