@@ -1,13 +1,13 @@
 import * as tf from '@tensorflow/tfjs-node';
-import { readFileSync, existsSync, createWriteStream, createReadStream, readdirSync } from 'fs';import type { Tensor2D } from '@tensorflow/tfjs-core/dist/tensor';
+import { readFileSync } from 'fs';
 
 import {
-    buildEncoderDecoder,
     buildVocabulary,
     CORPUS_PATH,
     wordIndexToOneHot,
 } from '../src/tinygpt';
 
+import { buildEncoderDecoder } from '../src/encoderDecoder';
 import { expect } from 'chai';
 import { twoParagraphs } from './testText';
 
@@ -22,7 +22,7 @@ describe('Vocabulary EncoderDecoder', async () => {
         // Act
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
         const word0 = wordIndexToOneHot(0, vocabulary);
-        const decoded = encoderDecoder.predict(word0) as Tensor2D;
+        const decoded = encoderDecoder.predict(word0) as tf.Tensor2D;
         const tokenIndex = tf.argMax(decoded, 1).dataSync()[0];
 
         // Assert
@@ -43,7 +43,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         for (let i = 0; i < vocabulary.words.length; i++){
             const word = wordIndexToOneHot(i, vocabulary);
-            const prediction = encoderDecoder.predict(word) as Tensor2D;
+            const prediction = encoderDecoder.predict(word) as tf.Tensor2D;
             const tokenIndex = tf.argMax(prediction, 1).dataSync()[0] as number;
 
             encoded.push(i);
@@ -68,7 +68,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         for (let i = 0; i < vocabulary.words.length; i++){
             const word = wordIndexToOneHot(i, vocabulary);
-            const prediction = encoderDecoder.predict(word) as Tensor2D;
+            const prediction = encoderDecoder.predict(word) as tf.Tensor2D;
             const tokenIndex = tf.argMax(prediction, 1).dataSync()[0] as number;
 
             encoded.push(i);
@@ -94,7 +94,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         for (let i = 0; i < vocabulary.words.length; i++){
             const word = wordIndexToOneHot(i, vocabulary);
-            const prediction = encoderDecoder.predict(word) as Tensor2D;
+            const prediction = encoderDecoder.predict(word) as tf.Tensor2D;
             const tokenIndex = tf.argMax(prediction, 1).dataSync()[0] as number;
 
             encoded.push(i);
@@ -121,7 +121,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         for (let i = 0; i < vocabulary.words.length; i++){
             const word = wordIndexToOneHot(i, vocabulary);
-            const prediction = encoderDecoder.predict(word) as Tensor2D;
+            const prediction = encoderDecoder.predict(word) as tf.Tensor2D;
             const tokenIndex = tf.argMax(prediction, 1).dataSync()[0] as number;
 
             encoded.push(i);
