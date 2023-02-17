@@ -74,12 +74,12 @@ async function getVocabulary(): Promise<Vocabulary> {
     }
 }
 
-export async function buildVocabulary(text?: string): Promise<Vocabulary> {
+export async function buildVocabulary(...texts: string[]): Promise<Vocabulary> {
     const t1 = performance.now();
     let tokens = [];
 
-    if (text) {
-        tokens = tokenize(text);
+    if (texts) {
+        texts.forEach(text => tokens = tokenize(text));
     }
     else {
         const texts = readdirSync(CORPUS_PATH);
@@ -111,6 +111,47 @@ type TrainingData = {
 export function wordIndexToOneHot(index: number, vocabulary: Vocabulary) {
     return tf.oneHot(tf.tensor1d([index], 'int32'), vocabulary.words.length);
 }
+
+export function textToTensor(text: string, {
+    vocabulary,
+    encoderLayer,
+    maxLength,
+} : {
+    vocabulary: Vocabulary
+    encoderLayer: tf.layers.Layer,
+    maxLength?: number
+}) {
+    const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
+        max: 10,
+        dispose(value: tf.Tensor) {
+            value.dispose();
+        }
+    })
+
+    let tokens = tokenize(text);
+
+    if (tokens.length > maxLength) {
+        tokens = tokens.slice(0, maxLength);
+    }
+
+    const tokenIndices = tokens.map(token => findWordIndex(token, vocabulary));
+    const result = tf.concat(tokenIndices.map(
+        index =>
+            encodeWordIndex(
+                index,
+                {
+                    vocabulary,
+                    encoderLayer,
+                    encodeWordIndexCache
+                }
+            ) as tf.Tensor
+    ), 1);
+
+    encodeWordIndexCache.clear();
+
+    return result;
+}
+
 
 async function getTrainingData(
     { vocabulary, beforeSize } :

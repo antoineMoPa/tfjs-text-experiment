@@ -1,6 +1,32 @@
 import { tokenize } from '../tinygpt';
 import { sum } from 'lodash';
 
+type TokenProbabilities = {
+    token: string;
+    probability: number;
+}[];
+
+export function tokenProbabilities(text: string, vocabulary: string[]): TokenProbabilities {
+    const tokens = tokenize(text);
+    const wordOccurences = new Map<string, number>();
+
+    vocabulary.forEach(token => wordOccurences.set(token, 0));
+
+    tokens.forEach(token => {
+        wordOccurences.set(token, wordOccurences.get(token) + 1);
+    });
+
+    return tokens
+        .map(token => ({
+            token,
+            probability: wordOccurences.get(token) / tokens.length
+        }))
+        .sort((a, b) =>
+            a.probability < b.probability ? -1 :
+            a.probability ===  b.probability ? 0 : 1);
+}
+
+
 // Honestly, I'm not sure yet how to use that
 export function textEntropy(text: string, vocabulary: string[]): number {
     const tokens = tokenize(text);
@@ -12,8 +38,8 @@ export function textEntropy(text: string, vocabulary: string[]): number {
         wordOccurences.set(token, wordOccurences.get(token) + 1);
     });
 
-    const tokenProbabilities = tokens.map(token => wordOccurences.get(token) / tokens.length);
-    const entropies = tokenProbabilities.map(p => p * Math.log(p));
+    const probs = tokenProbabilities(text, vocabulary);
+    const entropies = probs.map(p => p.probability * Math.log(p.probability));
 
     return -sum(entropies);
 }
