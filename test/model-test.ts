@@ -22,7 +22,7 @@ describe('Model', async () => {
         const text = 'the quick brown fox jumps over the lazy dog';
 
         // Act
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
 
         // Assert
         expect(vocabulary.words).to.contain(' fox');
@@ -32,7 +32,7 @@ describe('Model', async () => {
     it('Should remember a simple word', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
         const beforeSize = 3;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize });
         const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({
@@ -62,7 +62,7 @@ describe('Model', async () => {
     it('Should remember a simple sentence', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
         const beforeSize = 3;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize });
         const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({
@@ -91,7 +91,7 @@ describe('Model', async () => {
 
         // Arrange
         const text = 'It belongs to the taxonomic family Equidae and is one of two extant subspecies of Equus ferus.';
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
         const beforeSize = 3;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize,  });
         const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({

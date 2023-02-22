@@ -7,24 +7,16 @@ import {
     TEXT_RATER_OUTPUT_LEN,
 } from '../src/textRater';
 import { expect } from 'chai';
-import { flatTextRaterData, textRaterData } from '../src/textRaterData';
+import { textRaterData } from '../src/textRaterData';
 
-describe.only('Text Rater', async () => {
+describe('Text Rater', async () => {
     it('Rates text', async function () {
         this.timeout(50000);
 
         // Arrange
-        const encodingSize = 40;
         const text1 = 'Early computers were meant to be used only for calculations.';
         const text2 = 'quick quick quick quick quick quick quick quick quick quick';
-        const vocabulary = await buildVocabulary(...[text1, text2, ...flatTextRaterData]);
-
-        const { encoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize })
-        const { textRater } = await buildTextRater({
-            vocabulary,
-            encoderLayer,
-            encodingSize,
-        });
+        const { textRater } = await buildTextRater();
 
         // Act
 
@@ -36,10 +28,7 @@ describe.only('Text Rater', async () => {
                 const result = rateText(
                     text,
                     {
-                        vocabulary,
-                        encoderLayer,
                         textRater,
-                        encodingSize
                     }
                 );
 
@@ -50,25 +39,17 @@ describe.only('Text Rater', async () => {
             console.log(`success rate(class ${TEXT_RATER_OUTPUT[i]}): ${success}/${total} ${(success/total*100.0).toFixed(0)}%`);
         }
 
-
-
         const result1 = rateText(
             text1,
             {
-                vocabulary,
-                encoderLayer,
                 textRater,
-                encodingSize
             }
         );
 
         const result2 = rateText(
             text2,
             {
-                vocabulary,
-                encoderLayer,
                 textRater,
-                encodingSize
             }
         );
 

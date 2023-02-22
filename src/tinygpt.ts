@@ -57,7 +57,7 @@ async function getVocabulary(): Promise<Vocabulary> {
         });
     }
     else {
-        const data: Vocabulary =  await buildVocabulary();
+        const data: Vocabulary =  buildVocabulary();
         console.log('Caching vocabulary to disk');
         await new Promise<void>(resolve => {
             const stringifyStream = json.createStringifyStream({ body: data });
@@ -74,12 +74,14 @@ async function getVocabulary(): Promise<Vocabulary> {
     }
 }
 
-export async function buildVocabulary(...texts: string[]): Promise<Vocabulary> {
-    const t1 = performance.now();
+export function buildVocabulary(...texts: string[]): Vocabulary {
     let tokens = [];
 
     if (texts) {
-        texts.forEach(text => tokens.push(tokenize(text)));
+        texts.forEach(text => {
+            const newTokens = tokenize(text);
+            tokens = [...tokens, ...newTokens];
+        });
     }
     else {
         const texts = readdirSync(CORPUS_PATH);
@@ -93,8 +95,6 @@ export async function buildVocabulary(...texts: string[]): Promise<Vocabulary> {
     tokens.push('[END]');
     tokens.push('[NULL]');
     const words: string[] = _.shuffle(_.uniq(tokens));
-    const t2 = performance.now();
-    console.log(`Done! (in ${(t2 - t1).toFixed(0)} ms)`);
 
     return { words };
 }
@@ -492,7 +492,7 @@ export async function buildModelFromText({
     encodingSize
 } : BuildModelFromTextArgs) {
     const beforeSize: number = LEVEL_TO_BEFORE_SIZE[level];
-    const vocabulary = await buildVocabulary(text);
+    const vocabulary = buildVocabulary(text);
     const trainingData = await buildTrainingData({
         vocabulary,
         text,

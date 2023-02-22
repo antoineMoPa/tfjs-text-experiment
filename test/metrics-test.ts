@@ -11,7 +11,7 @@ describe('Metrics', async () => {
     it('Should calculate entropy', async () => {
         // Arrange
         const text = 'The horse has evolved over the three categories based';
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
 
         // Act
         const entropy = textEntropy(text, vocabulary);

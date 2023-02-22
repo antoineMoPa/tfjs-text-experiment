@@ -17,7 +17,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
 
         // Act
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
@@ -34,7 +34,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
 
         // Act
@@ -59,7 +59,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Arrange
         const text = twoParagraphs;
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
 
         // Act
@@ -84,7 +84,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
-        const vocabulary = await buildVocabulary(text);
+        const vocabulary = buildVocabulary(text);
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 80 });
 
         // Act
@@ -111,7 +111,7 @@ describe('Vocabulary EncoderDecoder', async () => {
         this.timeout(50000);
 
         // Arrange
-        const vocabulary = await buildVocabulary();
+        const vocabulary = buildVocabulary();
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 128 });
 
         // Act
