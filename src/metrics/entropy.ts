@@ -1,16 +1,17 @@
 import { tokenize } from '../tinygpt';
 import { sum } from 'lodash';
+import { Vocabulary } from '../tinygpt'
 
 type TokenProbabilities = {
     token: string;
     probability: number;
 }[];
 
-export function tokenProbabilities(text: string, vocabulary: string[]): TokenProbabilities {
+export function tokenProbabilities(text: string, vocabulary: Vocabulary): TokenProbabilities {
     const tokens = tokenize(text);
     const wordOccurences = new Map<string, number>();
 
-    vocabulary.forEach(token => wordOccurences.set(token, 0));
+    vocabulary.words.forEach(token => wordOccurences.set(token, 0));
 
     tokens.forEach(token => {
         wordOccurences.set(token, wordOccurences.get(token) + 1);
@@ -28,11 +29,11 @@ export function tokenProbabilities(text: string, vocabulary: string[]): TokenPro
 
 
 // Honestly, I'm not sure yet how to use that
-export function textEntropy(text: string, vocabulary: string[]): number {
+export function textEntropy(text: string, vocabulary: Vocabulary): number {
     const tokens = tokenize(text);
     const wordOccurences = new Map<string, number>();
 
-    vocabulary.forEach(token => wordOccurences.set(token, 0));
+    vocabulary.words.forEach(token => wordOccurences.set(token, 0));
 
     tokens.forEach(token => {
         wordOccurences.set(token, wordOccurences.get(token) + 1);

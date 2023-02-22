@@ -79,7 +79,7 @@ export async function buildVocabulary(...texts: string[]): Promise<Vocabulary> {
     let tokens = [];
 
     if (texts) {
-        texts.forEach(text => tokens = tokenize(text));
+        texts.forEach(text => tokens.push(tokenize(text)));
     }
     else {
         const texts = readdirSync(CORPUS_PATH);

@@ -1,47 +1,55 @@
-import * as tf from '@tensorflow/tfjs-node';
-
 import { buildVocabulary } from '../src/tinygpt';
 import { buildEncoderDecoder } from '../src/encoderDecoder';
 import {
     buildTextRater,
     TEXT_RATER_OUTPUT,
-    rateText
+    rateText,
+    TEXT_RATER_OUTPUT_LEN,
 } from '../src/textRater';
 import { expect } from 'chai';
 import { flatTextRaterData, textRaterData } from '../src/textRaterData';
 
 describe.only('Text Rater', async () => {
     it('Rates text', async function () {
-        this.timeout(30000);
+        this.timeout(50000);
 
         // Arrange
-        const encodingSize = 10;
+        const encodingSize = 40;
         const text1 = 'Early computers were meant to be used only for calculations.';
         const text2 = 'quick quick quick quick quick quick quick quick quick quick';
         const vocabulary = await buildVocabulary(...[text1, text2, ...flatTextRaterData]);
+
         const { encoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize })
         const { textRater } = await buildTextRater({
             vocabulary,
-            inputSize: 10,
+            encoderLayer,
             encodingSize,
-            encoderLayer
         });
 
         // Act
 
-        for (let i = 0; i < Object.keys(textRaterData).length; i++) {
+        for (let i = 0; i < TEXT_RATER_OUTPUT_LEN; i++) {
+            let success = 0;
+            let total = 0;
+
             textRaterData[i].forEach(text => {
-                console.log(`Should be ${i}`);
-                const result1 = rateText(
+                const result = rateText(
                     text,
                     {
                         vocabulary,
                         encoderLayer,
                         textRater,
+                        encodingSize
                     }
                 );
+
+                result === i && success++;
+                total++;
             });
+
+            console.log(`success rate(class ${TEXT_RATER_OUTPUT[i]}): ${success}/${total} ${(success/total*100.0).toFixed(0)}%`);
         }
+
 
 
         const result1 = rateText(
@@ -50,6 +58,7 @@ describe.only('Text Rater', async () => {
                 vocabulary,
                 encoderLayer,
                 textRater,
+                encodingSize
             }
         );
 
@@ -59,6 +68,7 @@ describe.only('Text Rater', async () => {
                 vocabulary,
                 encoderLayer,
                 textRater,
+                encodingSize
             }
         );
 

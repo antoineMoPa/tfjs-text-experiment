@@ -6,16 +6,57 @@ import {
     textToTensor,
     tokenize
 } from './tinygpt';
-import { textRaterData } from './textRaterData';
-import { tokenProbabilities } from './metrics/entropy';
+export const TEXT_RATER_INPUT_LENGTH = 8;
 
 // No output means that the text is good
-export const enum TEXT_RATER_OUTPUT {
-    REPETITIVE = 0,
-    GOOD = 1,
+export enum TEXT_RATER_OUTPUT {
+    NEVER = 0,
+    REPETITIVE = 1,
+    GOOD = 2,
 }
+
+export const TEXT_RATER_OUTPUT_VALUES = [
+    TEXT_RATER_OUTPUT.NEVER,
+    TEXT_RATER_OUTPUT.REPETITIVE,
+    TEXT_RATER_OUTPUT.GOOD
+];
+
+import { textRaterData } from './textRaterData';
+
 // Null is not part of the output
-const TEXT_RATER_OUTPUT_LEN = 1;
+export const TEXT_RATER_OUTPUT_LEN = TEXT_RATER_OUTPUT_VALUES.length;
+
+export function prepareTextRaterInput({
+    text,
+    vocabulary,
+    encoderLayer,
+    encodingSize
+} : {
+    text: string,
+    vocabulary: Vocabulary,
+    encoderLayer: tf.layers.Layer,
+    encodingSize: number
+}) {
+    const inputLength = TEXT_RATER_INPUT_LENGTH;
+    const inputSize = encodingSize * inputLength;
+    const timeSteps = tf
+        .linspace(0, inputLength, inputSize)
+        .reshape([1, inputSize])
+        .floor();
+
+    const tensor = textToTensor(text, {
+        vocabulary,
+        encoderLayer,
+        maxLength: inputLength
+    })
+
+    const result = tf.concat([
+        timeSteps,
+        tensor,
+    ], 0);
+
+    return result;
+}
 
 export function rateText(
     text: string,
@@ -23,98 +64,74 @@ export function rateText(
         vocabulary,
         encoderLayer,
         textRater,
+        encodingSize
     } :
     {
         vocabulary: Vocabulary;
         encoderLayer: tf.layers.Layer;
         textRater: tf.LayersModel;
+        encodingSize: number
     }
 ): TEXT_RATER_OUTPUT {
-    const tensor = textToTensor(text, {
+    const tensor = prepareTextRaterInput({
+        text,
         vocabulary,
         encoderLayer,
-        maxLength: 10
+        encodingSize
     });
-    const output = textRater.predict(tensor) as tf.Tensor;
-    console.log(output.dataSync()[0]);
-
+    const output = textRater.predict(tensor.reshape([
+        1,
+        tensor.shape[0],
+        tensor.shape[1],
+    ])) as tf.Tensor;
     const result = tf.argMax(output, 1).dataSync()[0];
-    const probability = output.dataSync()[result];
-    const threshold = 0;
-
-    if (probability > threshold) {
-        return result;
-    }
-
-    return TEXT_RATER_OUTPUT.GOOD;
+    return result;
 }
 
 export async function buildTextRater(
     {
         vocabulary,
-        inputSize,
-        encodingSize,
         encoderLayer,
+        encodingSize,
     }: {
         vocabulary: Vocabulary;
-        inputSize: number;
-        encodingSize?: number;
         encoderLayer: tf.layers.Layer;
+        encodingSize: number
     }
 ) {
-    const encodedInputSize = encodingSize * inputSize;
+    const inputLength = TEXT_RATER_INPUT_LENGTH;
     const inputs = tf.input({
-        shape: [encodedInputSize],
+        shape: [2, inputLength * encodingSize],
+        name: 'input'
     });
 
-    const denseLayer1 = tf.layers.dense({
-        units: encodedInputSize,
-        activation: "swish",
-        kernelInitializer: tf.initializers.randomNormal({}),
-        name: "denseLayer1",
-    })
+    const outputSize = TEXT_RATER_OUTPUT_LEN;
 
-    const denseLayer1Output = denseLayer1.apply(inputs) as SymbolicTensor;
+    let layerOutput = inputs;
 
-    const denseLayer2 = tf.layers.dense({
-        units: 30,
-        activation: "swish",
-        name: "denseLayer2",
-        kernelInitializer: tf.initializers.randomNormal({}),
+    const rnnLayer = tf.layers.simpleRNN({
+        units: 2,
+        activation: 'swish',
+        kernelInitializer: tf.initializers.randomUniform({}),
     });
 
-    const denseLayer2Output = denseLayer2.apply(denseLayer1Output) as SymbolicTensor;
-
-    const denseLayer3 = tf.layers.dense({
-        units: 30,
-        activation: "swish",
-        name: "denseLayer3",
-        kernelInitializer: tf.initializers.randomNormal({}),
-    });
-
-    const denseLayer3Output = denseLayer3.apply(denseLayer2Output) as SymbolicTensor;
-
-    // const normLayer2 = tf.layers.layerNormalization();
-    // const normLayer2Output = normLayer2.apply(denseLayer2Output);
+    layerOutput = rnnLayer.apply(inputs) as SymbolicTensor;
 
     const outputLayer = tf.layers.dense({
-        units: TEXT_RATER_OUTPUT_LEN,
-        activation: "swish",
+        units: outputSize,
+        activation: "softmax",
         name: "output",
-        kernelInitializer: tf.initializers.randomNormal({}),
+        kernelInitializer: tf.initializers.randomUniform({}),
     });
 
-    // const normLayer3 = tf.layers.layerNormalization();
-    // const normLayer3Output = normLayer3.apply(outputLayer.apply(normLayer2Output));
-    // const outputs = normLayer3Output as SymbolicTensor;
-    const outputs = outputLayer.apply(denseLayer3Output) as SymbolicTensor;
+    const outputs = outputLayer.apply(layerOutput) as SymbolicTensor;
 
     const textRater = tf.model({ inputs, outputs });
 
-    const alpha = 0.01;
+    const alpha = 0.002;
     textRater.compile({
         optimizer: tf.train.adamax(alpha),
-        loss: 'meanSquaredError',
+        loss: 'categoricalCrossentropy', // categoricalCrossentropy meanSquaredError
     })
 
     const trainingInputs = [];
@@ -122,42 +139,36 @@ export async function buildTextRater(
 
     for (let i = 0; i < Object.keys(textRaterData).length; i++) {
         textRaterData[i].forEach(text => {
-            const tokens = tokenize(text).slice(0, 10);
-            if (tokens.length !== 10) {
-                throw new Error('Expected 10 tokens!');
+            const tokens = tokenize(text).slice(0, inputLength);
+            if (tokens.length !== inputLength) {
+                throw new Error(`Expected ${inputLength} tokens!`);
             }
             trainingInputs.push(
-                textToTensor(
-                    tokens.join(''), { vocabulary, encoderLayer }
-                )
+                prepareTextRaterInput({
+                    text,
+                    vocabulary,
+                    encoderLayer,
+                    encodingSize
+                })
             );
 
-            // Each category (like REPETITIVE) is reprensented by one unit.
-            // GOOD is represented by having zeros as output
-            if (i === TEXT_RATER_OUTPUT.GOOD) {
-                console.log('IS GOODDDD');
-                expectedOutputs.push(tf.zeros([TEXT_RATER_OUTPUT_LEN]));
-            } else if (TEXT_RATER_OUTPUT_LEN === 1) {
-                console.log('IS BADD');
-                expectedOutputs.push(tf.mul(tf.ones([TEXT_RATER_OUTPUT_LEN]), 1));
-            } else {
-                console.log('IS NONE OF THE ABOVE');
-                expectedOutputs.push(
-                    tf.oneHot(tf.tensor1d([i], 'int32'), TEXT_RATER_OUTPUT_LEN)
-                );
-            }
+            // Each category (like REPETITIVE) is represented by one unit.
+            expectedOutputs.push(
+                tf.oneHot(tf.tensor1d([i], 'int32'), TEXT_RATER_OUTPUT_LEN)
+            );
         });
     }
-    const concatenatedInput = tf.concat(trainingInputs, 0);
+
+    const concatenatedInput = tf.stack(trainingInputs);
     const concatenatedOutput = tf.concat(expectedOutputs, 0);
 
-    const epochs = 30;
+    const epochs = 1;
 
     await textRater.fit(concatenatedInput, concatenatedOutput, {
         epochs,
         batchSize: 1,
         shuffle: true,
-        verbose: 1
+        verbose: 1,
     });
 
     [

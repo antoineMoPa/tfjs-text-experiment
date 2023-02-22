@@ -14,7 +14,7 @@ describe('Metrics', async () => {
         const vocabulary = await buildVocabulary(text);
 
         // Act
-        const entropy = textEntropy(text, vocabulary.words);
+        const entropy = textEntropy(text, vocabulary);
 
         // Assert
         expect(entropy).to.be.a('number');
