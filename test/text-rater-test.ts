@@ -7,9 +7,12 @@ import {
     TEXT_RATER_OUTPUT_LEN,
 } from '../src/textRater';
 import { expect } from 'chai';
-import { flatTextRaterData, textRaterData } from '../src/textRaterData';
+import {
+    flatTextRaterData,
+    validationData
+} from '../src/textRaterData';
 
-describe.only('Text Rater', async () => {
+describe('Text Rater', async () => {
     it('Rates text', async function () {
         this.timeout(50000);
 
@@ -32,7 +35,7 @@ describe.only('Text Rater', async () => {
             let success = 0;
             let total = 0;
 
-            textRaterData[i].forEach(text => {
+            validationData[i].forEach(text => {
                 const result = rateText(
                     text,
                     {
@@ -47,33 +50,15 @@ describe.only('Text Rater', async () => {
                 total++;
             });
 
-            console.log(`success rate(class ${TEXT_RATER_OUTPUT[i]}): ${success}/${total} ${(success/total*100.0).toFixed(0)}%`);
+            const expectedSuccessRate = {
+                [TEXT_RATER_OUTPUT.GOOD]: 0.3,
+                [TEXT_RATER_OUTPUT.REPETITIVE]: 0.8
+            }
+
+            if (expectedSuccessRate[i]) {
+                expect(success/total).to.be.greaterThan(expectedSuccessRate[i]);
+                console.log(`Validation data - success rate(class ${TEXT_RATER_OUTPUT[i]}): ${success}/${total} ${(success/total*100.0).toFixed(0)}%, expected: > ${expectedSuccessRate[i]} %`);
+            }
         }
-
-
-
-        const result1 = rateText(
-            text1,
-            {
-                vocabulary,
-                encoderLayer,
-                textRater,
-                encodingSize
-            }
-        );
-
-        const result2 = rateText(
-            text2,
-            {
-                vocabulary,
-                encoderLayer,
-                textRater,
-                encodingSize
-            }
-        );
-
-        // Assert
-        expect(result1, 'Should be GOOD').to.equal(TEXT_RATER_OUTPUT.GOOD);
-        expect(result2, 'Should be REPETITIVE').to.equal(TEXT_RATER_OUTPUT.REPETITIVE);
     });
 });

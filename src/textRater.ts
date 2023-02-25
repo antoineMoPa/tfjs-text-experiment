@@ -110,8 +110,8 @@ export async function buildTextRater(
     let layerOutput = inputs;
 
     const rnnLayer = tf.layers.lstm({
-        units: 30,
-        activation: 'tanh',
+        units: 100,
+        activation: 'sigmoid',
         kernelInitializer: tf.initializers.randomUniform({}),
     });
 
@@ -124,7 +124,9 @@ export async function buildTextRater(
         kernelInitializer: tf.initializers.randomUniform({}),
     });
 
-    const outputs = outputLayer.apply(layerOutput) as SymbolicTensor;
+    layerOutput = outputLayer.apply(layerOutput) as SymbolicTensor;
+
+    const outputs = layerOutput;
 
     const textRater = tf.model({ inputs, outputs });
 
@@ -162,14 +164,19 @@ export async function buildTextRater(
     const concatenatedInput = tf.stack(trainingInputs);
     const concatenatedOutput = tf.concat(expectedOutputs, 0);
 
-    const epochs = 15;
+    const params = [
+        {epochs: 20, batchSize: 20},
+    ];
 
-    await textRater.fit(concatenatedInput, concatenatedOutput, {
-        epochs,
-        batchSize: 30,
-        shuffle: true,
-        verbose: 1,
-    });
+    for (const param of params) {
+        const {epochs, batchSize} = param;
+        await textRater.fit(concatenatedInput, concatenatedOutput, {
+            epochs,
+            batchSize,
+            shuffle: true,
+            verbose: 1,
+        });
+    }
 
     [
         ...trainingInputs,
