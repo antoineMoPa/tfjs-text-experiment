@@ -115,7 +115,7 @@ export async function buildTextRater(
         kernelInitializer: tf.initializers.randomUniform({}),
     });
 
-    layerOutput = rnnLayer.apply(inputs) as SymbolicTensor;
+    layerOutput = rnnLayer.apply(layerOutput) as SymbolicTensor;
 
     const outputLayer = tf.layers.dense({
         units: outputSize,
@@ -163,6 +163,8 @@ export async function buildTextRater(
 
     const concatenatedInput = tf.stack(trainingInputs);
     const concatenatedOutput = tf.concat(expectedOutputs, 0);
+
+    console.log(concatenatedInput.shape)
 
     const params = [
         {epochs: 20, batchSize: 20},

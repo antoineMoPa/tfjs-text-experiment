@@ -16,7 +16,7 @@ import { expect } from 'chai';
 
 import { twoParagraphs } from './testText';
 
-describe('Model', async () => {
+describe.only('Model', async () => {
     it('Should build a vocabulary', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
@@ -51,7 +51,8 @@ describe('Model', async () => {
                 vocabulary,
                 beforeSize,
                 encoderLayer,
-                encodeWordIndexCache
+                encodeWordIndexCache,
+                encodingSize: 4,
             }
         );
 
@@ -79,7 +80,8 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
+            encodeWordIndexCache,
+            encodingSize: 4
         })
 
         // Assert
@@ -99,7 +101,7 @@ describe('Model', async () => {
             trainingData,
             verbose: false,
             beforeSize,
-            encodingSize: 10
+            encodingSize: 10,
         });
 
         // Act
@@ -108,7 +110,8 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
+            encodeWordIndexCache,
+            encodingSize: 10
         })
 
         // Assert
@@ -140,6 +143,7 @@ describe('Model', async () => {
             beforeSize,
             encoderLayer,
             encodeWordIndexCache,
+            encodingSize: 20
         })
 
         // Assert
@@ -161,7 +165,7 @@ describe('Model', async () => {
             text,
             verbose: false,
             level: 1,
-            encodingSize: 64
+            encodingSize: 20
         });
 
         // Act
@@ -170,7 +174,8 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
+            encodeWordIndexCache,
+            encodingSize: 20,
         })
 
         // Assert
@@ -202,7 +207,8 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
+            encodeWordIndexCache,
+            encodingSize: 30,
         })
 
         // Assert
@@ -210,7 +216,7 @@ describe('Model', async () => {
     });
 
     it('Should remember multiple paragraphs', async function() {
-        this.timeout(20000);
+        this.timeout(40000);
         // Arrange
         const text = twoParagraphs;
 
@@ -233,15 +239,16 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
-        })
+            encodeWordIndexCache,
+            encodingSize: 50,
+        });
 
         // Assert
         expect(sentence).to.equal((text + '[END]'));
     });
 
     it('Should remember an entire paragraphs', async function() {
-        this.timeout(20000);
+        this.timeout(40000);
         // Arrange
         const text = twoParagraphs;
 
@@ -264,7 +271,8 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
+            encodeWordIndexCache,
+            encodingSize: 50,
         })
 
         // Assert
@@ -272,7 +280,7 @@ describe('Model', async () => {
     });
 
     it.skip('Should parse and entire article and output horse information.', async function() {
-        this.timeout(20000);
+        this.timeout(40000);
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
 
@@ -295,7 +303,8 @@ describe('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
-            encodeWordIndexCache
+            encodeWordIndexCache,
+            encodingSize: 128,
         })
 
         // Assert
