@@ -20,7 +20,10 @@ describe('Vocabulary EncoderDecoder', async () => {
         const vocabulary = buildVocabulary(text);
 
         // Act
-        const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
+        const { encoderDecoder } = await buildEncoderDecoder({
+            vocabulary,
+            encodingSize: 30,
+        });
         const word0 = wordIndexToOneHot(0, vocabulary);
         const decoded = encoderDecoder.predict(word0) as tf.Tensor2D;
         const tokenIndex = tf.argMax(decoded, 1).dataSync()[0];

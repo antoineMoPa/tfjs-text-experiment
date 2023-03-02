@@ -26,14 +26,14 @@ export async function buildEncoderDecoder(
 
     const encodedLayerOutput = encoderLayer.apply(inputs) as SymbolicTensor;
 
-    const outputLayer = tf.layers.dense({
+    const decoderLayer = tf.layers.dense({
         units: vocabulary.words.length,
         activation: "softmax",
         kernelInitializer: tf.initializers.randomNormal({}),
         name: "output",
     });
 
-    const outputs = outputLayer.apply(encodedLayerOutput) as SymbolicTensor;
+    const outputs = decoderLayer.apply(encodedLayerOutput) as SymbolicTensor;
     const encoderDecoder =  tf.model({ inputs, outputs });
 
     encoderDecoder.compile({
@@ -90,5 +90,9 @@ export async function buildEncoderDecoder(
         throw new Error('Encoder/Decoder was not successful at encoding vocabulary.');
     }
 
-    return { encoderDecoder, encoderLayer };
+    return {
+        encoderDecoder,
+        encoderLayer,
+        decoderLayer
+    };
 }

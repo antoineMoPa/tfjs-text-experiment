@@ -29,18 +29,25 @@ describe.only('Model', async () => {
         expect(vocabulary.words).to.contain('[END]');
     });
 
-    it('Should remember a simple word', async () => {
+    it('Should remember a simple word', async function () {
+        this.timeout(10000)
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
         const beforeSize = 3;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize });
-        const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({
+
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            encodeWordIndexCache
+        } = await buildModel({
             vocabulary,
             trainingData,
             verbose: false,
             beforeSize,
-            encodingSize: 4
+            encodingSize: 7
         });
 
         // Act
@@ -50,14 +57,14 @@ describe.only('Model', async () => {
                 wordPredictModel,
                 vocabulary,
                 beforeSize,
-                encoderLayer,
+                encoderLayer, decoderLayer,
                 encodeWordIndexCache,
-                encodingSize: 4,
+                encodingSize: 7,
             }
         );
 
         // Assert
-        expect(word).to.equal(' fox');
+        expect(word, 'The quick brown [?]').to.equal(' fox');
     });
 
     it('Should remember a simple sentence', async () => {
@@ -66,12 +73,12 @@ describe.only('Model', async () => {
         const vocabulary = buildVocabulary(text);
         const beforeSize = 3;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize });
-        const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({
+        const { wordPredictModel, encoderLayer, decoderLayer,  encodeWordIndexCache } = await buildModel({
             vocabulary,
             trainingData,
             verbose: false,
             beforeSize,
-            encodingSize: 4
+            encodingSize: 7
         });
 
         // Act
@@ -79,9 +86,9 @@ describe.only('Model', async () => {
             vocabulary,
             wordPredictModel,
             beforeSize,
-            encoderLayer,
+            encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 4
+            encodingSize: 7
         })
 
         // Assert
@@ -96,7 +103,12 @@ describe.only('Model', async () => {
         const vocabulary = buildVocabulary(text);
         const beforeSize = 3;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize,  });
-        const { wordPredictModel, encoderLayer, encodeWordIndexCache } = await buildModel({
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            encodeWordIndexCache
+        } = await buildModel({
             vocabulary,
             trainingData,
             verbose: false,
@@ -109,7 +121,7 @@ describe.only('Model', async () => {
             vocabulary,
             wordPredictModel,
             beforeSize,
-            encoderLayer,
+            encoderLayer, decoderLayer,
             encodeWordIndexCache,
             encodingSize: 10
         })
@@ -128,6 +140,7 @@ describe.only('Model', async () => {
             vocabulary,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
         } = await buildModelFromText({
             text,
@@ -141,7 +154,7 @@ describe.only('Model', async () => {
             vocabulary,
             wordPredictModel,
             beforeSize,
-            encoderLayer,
+            encoderLayer, decoderLayer,
             encodeWordIndexCache,
             encodingSize: 20
         })
@@ -151,7 +164,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember a couple of sentences', async function() {
-        this.timeout(10000);
+        this.timeout(5000);
 
         // Arrange
         const text = 'Horses are adapted to run, allowing them to quickly escape predators, and possess an excellent sense of balance and a strong fight-or-flight response. Related to this need to flee from predators in the wild is an unusual trait: horses are able to sleep both standing up and lying down, with younger horses tending to sleep significantly more than adults.';
@@ -160,6 +173,7 @@ describe.only('Model', async () => {
             vocabulary,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
         } = await buildModelFromText({
             text,
@@ -174,6 +188,7 @@ describe.only('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
             encodingSize: 20,
         })
@@ -183,7 +198,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember an entire paragraph', async function() {
-        this.timeout(20000);
+        this.timeout(5000);
 
         // Arrange
         const text = 'Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.';
@@ -193,6 +208,7 @@ describe.only('Model', async () => {
             vocabulary,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
         } = await buildModelFromText({
             text,
@@ -207,6 +223,7 @@ describe.only('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
             encodingSize: 30,
         })
@@ -216,7 +233,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember multiple paragraphs', async function() {
-        this.timeout(40000);
+        this.timeout(5000);
         // Arrange
         const text = twoParagraphs;
 
@@ -225,10 +242,11 @@ describe.only('Model', async () => {
             vocabulary,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
         } = await buildModelFromText({
             text,
-            verbose: false,
+            verbose: true,
             level: 1,
             encodingSize: 50,
         });
@@ -238,42 +256,10 @@ describe.only('Model', async () => {
             vocabulary,
             wordPredictModel,
             beforeSize,
-            encoderLayer,
+            encoderLayer, decoderLayer,
             encodeWordIndexCache,
             encodingSize: 50,
         });
-
-        // Assert
-        expect(sentence).to.equal((text + '[END]'));
-    });
-
-    it('Should remember an entire paragraphs', async function() {
-        this.timeout(40000);
-        // Arrange
-        const text = twoParagraphs;
-
-        const {
-            wordPredictModel,
-            vocabulary,
-            beforeSize,
-            encoderLayer,
-            encodeWordIndexCache,
-        } = await buildModelFromText({
-            text,
-            verbose: false,
-            level: 1,
-            encodingSize: 50,
-        });
-
-        // Act
-        const sentence = await predictUntilEnd("Horse breeds are loosely divided into", {
-            vocabulary,
-            wordPredictModel,
-            beforeSize,
-            encoderLayer,
-            encodeWordIndexCache,
-            encodingSize: 50,
-        })
 
         // Assert
         expect(sentence).to.equal((text + '[END]'));
@@ -289,6 +275,7 @@ describe.only('Model', async () => {
             vocabulary,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
         } = await buildModelFromText({
             text,
@@ -303,6 +290,7 @@ describe.only('Model', async () => {
             wordPredictModel,
             beforeSize,
             encoderLayer,
+            decoderLayer,
             encodeWordIndexCache,
             encodingSize: 128,
         })
