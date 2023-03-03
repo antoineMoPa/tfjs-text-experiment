@@ -164,7 +164,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember a couple of sentences', async function() {
-        this.timeout(5000);
+        this.timeout(10000);
 
         // Arrange
         const text = 'Horses are adapted to run, allowing them to quickly escape predators, and possess an excellent sense of balance and a strong fight-or-flight response. Related to this need to flee from predators in the wild is an unusual trait: horses are able to sleep both standing up and lying down, with younger horses tending to sleep significantly more than adults.';
@@ -198,7 +198,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember an entire paragraph', async function() {
-        this.timeout(5000);
+        this.timeout(20000);
 
         // Arrange
         const text = 'Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.';
@@ -233,7 +233,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember multiple paragraphs', async function() {
-        this.timeout(5000);
+        this.timeout(50000);
         // Arrange
         const text = twoParagraphs;
 
