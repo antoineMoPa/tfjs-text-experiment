@@ -543,6 +543,7 @@ export async function buildModel(
     for (let i = 0; i < meta_epochs; i++) {
         verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
         for (let j = 0; j < trainingData.inputs.length; j += metaBatchSize) {
+            console.log(`Training on data  ${j} to ${j + metaBatchSize} of ${trainingData.inputs.length}`);
             const batchInputs = trainingData.inputs.slice(j, j + metaBatchSize);
             const batchOutputs = trainingData.expectedOutputs.slice(j, j + metaBatchSize);
 
