@@ -439,7 +439,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const baseSize = 410;
+    const baseSize = 450;
 
     layerOutput = tf.layers.lstm({
         units: baseSize,
@@ -458,7 +458,7 @@ export async function buildModel(
             units: 200,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-            biasInitializer: tf.initializers.constant({value: -0.02}),
+            biasInitializer: tf.initializers.constant({value: -0.001}),
         })
     }).apply(layerOutput) as SymbolicTensor;
 
@@ -471,7 +471,7 @@ export async function buildModel(
                     units: encodingSize,
                     activation: "relu",
                     kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-                    biasInitializer: tf.initializers.constant({value: -0.002}),
+                    biasInitializer: tf.initializers.randomUniform({ minval: -0.001, maxval: 0.001}),
                     name: "output",
                 })
         });
@@ -520,10 +520,10 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 35 * 5,
-            batchSize: 32,
+            epochs: 125,
+            batchSize: 40,
             verbose: 0,
-            shuffle: false
+            shuffle: true
         });
 
         [
