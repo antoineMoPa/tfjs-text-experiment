@@ -448,8 +448,8 @@ export async function buildModel(
         kernelInitializer: tf.initializers.randomUniform({}),
         recurrentInitializer: tf.initializers.randomUniform({}),
         biasInitializer: tf.initializers.randomUniform({
-            minval: -0.2,
-            maxval: -0.2,
+            minval: -0.03,
+            maxval: -0.03,
         }),
         dropout: 0,
         recurrentDropout: 0,

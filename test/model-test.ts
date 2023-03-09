@@ -163,7 +163,7 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it.skip('Should remember a couple of sentences', async function() {
+    it('Should remember a couple of sentences', async function() {
         this.timeout(10000);
 
         // Arrange
@@ -197,7 +197,7 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it.skip('Should remember an entire paragraph', async function() {
+    it('Should remember an entire paragraph', async function() {
         this.timeout(20000);
 
         // Arrange
