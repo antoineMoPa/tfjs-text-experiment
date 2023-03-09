@@ -443,9 +443,9 @@ export async function buildModel(
 
     layerOutput = tf.layers.lstm({
         units: baseSize,
-        activation: 'swish',
+        activation: 'relu',
         returnSequences: true,
-        kernelInitializer: tf.initializers.randomUniform({}),
+        kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
         recurrentInitializer: tf.initializers.randomUniform({}),
         biasInitializer: tf.initializers.constant({value: -0.002}),
         dropout: 0,
