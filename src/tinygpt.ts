@@ -11,13 +11,13 @@ export const CORPUS_PATH = "data/corpus";
 
 type WordIndexCache = LRU<string, tf.Tensor>;
 
-export const tokenize = (text:string) => {
+export const tokenize = (text: string) => {
     const tokens = [];
     let cursor = 0;
     let lastTokenBeginCursor = 0;
     const stopRegex = /[ \n\\.]/;
 
-    while(cursor < text.length) {
+    while (cursor < text.length) {
         if (stopRegex.test(text[cursor])) {
             const char = text[cursor];
             if (char === ' ' || char === '.' || char === '\n') {
@@ -47,7 +47,7 @@ async function getVocabulary(): Promise<Vocabulary> {
 
         return new Promise<Vocabulary>(resolve => {
             const parseStream = json.createParseStream();
-            parseStream.on('data', function(data) {
+            parseStream.on('data', function (data) {
                 resolve(data);
             });
             const readStream = createReadStream(PATH);
@@ -55,16 +55,16 @@ async function getVocabulary(): Promise<Vocabulary> {
         });
     }
     else {
-        const data: Vocabulary =  buildVocabulary();
+        const data: Vocabulary = buildVocabulary();
         console.log('Caching vocabulary to disk');
         await new Promise<void>(resolve => {
             const stringifyStream = json.createStringifyStream({ body: data });
             const writableStream = createWriteStream(PATH);
 
-            stringifyStream.on('data', function(strChunk) {
+            stringifyStream.on('data', function (strChunk) {
                 writableStream.write(strChunk);
             });
-            stringifyStream.on('close', function() {
+            stringifyStream.on('close', function () {
                 resolve();
             });
         });
@@ -114,7 +114,7 @@ export function textToTensor(text: string, {
     vocabulary,
     encoderLayer,
     maxLength,
-} : {
+}: {
     vocabulary: Vocabulary
     encoderLayer: tf.layers.Layer,
     maxLength?: number
@@ -153,7 +153,7 @@ export function textToTensor(text: string, {
 export function tokenIndicesToTensor(tokenIndices: number[], {
     vocabulary,
     encoderLayer,
-} : {
+}: {
     vocabulary: Vocabulary
     encoderLayer: tf.layers.Layer,
 }) {
@@ -183,8 +183,8 @@ export function tokenIndicesToTensor(tokenIndices: number[], {
 
 
 async function getTrainingData(
-    { vocabulary, beforeSize } :
-    { vocabulary: Vocabulary, beforeSize: number }
+    { vocabulary, beforeSize }:
+        { vocabulary: Vocabulary, beforeSize: number }
 ): Promise<TrainingData> {
 
     const PATH = 'data/trainingData.json';
@@ -193,7 +193,7 @@ async function getTrainingData(
 
         return new Promise<TrainingData>(resolve => {
             const parseStream = json.createParseStream();
-            parseStream.on('data', function(data) {
+            parseStream.on('data', function (data) {
                 resolve(data);
             });
             const readStream = createReadStream(PATH);
@@ -209,10 +209,10 @@ async function getTrainingData(
         await new Promise<void>(resolve => {
             const stringifyStream = json.createStringifyStream({ body: data });
             const writableStream = createWriteStream(PATH);
-            stringifyStream.on('data', function(strChunk) {
+            stringifyStream.on('data', function (strChunk) {
                 writableStream.write(strChunk);
             });
-            stringifyStream.on('close', function() {
+            stringifyStream.on('close', function () {
                 resolve();
             });
         });
@@ -222,7 +222,7 @@ async function getTrainingData(
 }
 
 async function words2Input(ngrams, vocabulary) {
-    const input  = [];
+    const input = [];
 
     for (let i = 0; i < ngrams.length; i++) {
         const index = findWordIndex(ngrams[i], vocabulary);
@@ -233,8 +233,8 @@ async function words2Input(ngrams, vocabulary) {
 }
 
 export const buildTrainingData = async (
-    { vocabulary, text, beforeSize } :
-    { vocabulary: Vocabulary, text?: string, beforeSize: number }
+    { vocabulary, text, beforeSize }:
+        { vocabulary: Vocabulary, text?: string, beforeSize: number }
 ): Promise<TrainingData> => {
     const expectedOutputs = [];
     const inputs = [];
@@ -244,7 +244,7 @@ export const buildTrainingData = async (
         words.push('[END]');
 
         for (let i = 0; i < words.length - beforeSize; i += 1) {
-            const inputWords  = words.slice(i,              i + beforeSize);
+            const inputWords = words.slice(i, i + beforeSize);
             const outputWords = words.slice(i + beforeSize, i + beforeSize + 1);
 
             inputs.push(await words2Input(inputWords, vocabulary));
@@ -293,7 +293,7 @@ const encodeWordIndex = (
         vocabulary,
         encoderLayer,
         encodeWordIndexCache
-    } : {
+    }: {
         vocabulary: Vocabulary;
         encoderLayer: tf.layers.Layer;
         encodeWordIndexCache: WordIndexCache;
@@ -340,7 +340,7 @@ export function prepareModelInput({
     timestepOffset,
     mode,
     includeTimeStep,
-} : {
+}: {
     tokenIndices?: number[],
     vocabulary?: Vocabulary,
     encoderLayer?: tf.layers.Layer,
@@ -412,7 +412,7 @@ export async function buildModel(
         level,
         beforeSize,
         encodingSize = 128,
-    } : BuildModelArgs
+    }: BuildModelArgs
 ): Promise<{
     wordPredictModel: tf.LayersModel;
     encoderLayer: tf.layers.Layer;
@@ -439,55 +439,53 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    // layerOutput = tf.layers.layerNormalization().apply(layerOutput) as SymbolicTensor;
+    const baseSize = 180;
 
-    const rnnLayer = tf.layers.lstm({
-        units: 80,
-        activation: 'tanh',
-        recurrentInitializer: tf.initializers.randomUniform({}),
+    layerOutput = tf.layers.lstm({
+        units: baseSize,
+        activation: 'relu',
         returnSequences: true,
-        dropout: 0.0,
-    });
+        kernelInitializer: tf.initializers.randomUniform({}),
+        recurrentInitializer: tf.initializers.randomUniform({}),
+        biasInitializer: tf.initializers.randomUniform({
+            minval: -1,
+            maxval: -1,
+        }),
+        dropout: 0,
+        recurrentDropout: 0,
+    }).apply(layerOutput) as SymbolicTensor;
 
-    layerOutput = rnnLayer.apply(layerOutput) as SymbolicTensor;
+    //tf.layers.timeDistributed({
+    //    layer:
+    //    tf.layers.dense({
+    //        units: baseSize,
+    //        activation: 'relu',
+    //        kernelInitializer: tf.initializers.randomUniform({}),
+    //    })
+    //}).apply(layerOutput) as SymbolicTensor;
 
-    //layerOutput = tf.layers.layerNormalization().apply(layerOutput) as SymbolicTensor;
-
-    // const denseLayer =
-    //     tf.layers.timeDistributed({
-    //         layer: tf.layers.dense({
-    //             units: 130,
-    //             activation: "tanh",
-    //             kernelInitializer: tf.initializers.randomNormal({}),
-    //             name: "output",
-    //         })
-    //     });
-    //
-    // layerOutput = denseLayer.apply(layerOutput) as SymbolicTensor;
-
-    //layerOutput = tf.layers.layerNormalization().apply(layerOutput) as SymbolicTensor;
+    // layerOutput = tf.layers.layerNormalization().apply(layerOutput) as SymbolicTensor;
 
     const outputLayer =
         tf.layers.timeDistributed({
             layer:
-            tf.layers.dense({
-                units: encodingSize,
-                activation: "swish",
-                kernelInitializer: tf.initializers.randomNormal({}),
-                name: "output",
-            })
+                tf.layers.dense({
+                    units: encodingSize,
+                    activation: "relu",
+                    kernelInitializer: tf.initializers.randomNormal({}),
+                    name: "output",
+                })
         });
 
     layerOutput = outputLayer.apply(layerOutput) as SymbolicTensor;
 
-
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.3;
+    const alpha = 0.008;
 
     wordPredictModel.compile({
-        optimizer: tf.train.sgd(alpha),
+        optimizer: tf.train.adamax(alpha),
         loss: 'meanSquaredError',
     })
 
@@ -505,7 +503,7 @@ export async function buildModel(
                     mode: 'embedding',
                     includeTimeStep: true
                 })
-            );
+        );
         const trainingOutputs = outputs.map(
             tokenIndices =>
                 prepareModelInput({
@@ -517,16 +515,16 @@ export async function buildModel(
                     mode: 'embedding',
                     includeTimeStep: true
                 })
-            );
+        );
 
-        const concatenatedInput  = tf.stack(trainingInputs);
+        const concatenatedInput = tf.stack(trainingInputs);
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 30,
-            batchSize: 5,
+            epochs: 70,
+            batchSize: 30,
             verbose: 0,
-            shuffle: true
+            shuffle: false
         });
 
         [
@@ -542,7 +540,7 @@ export async function buildModel(
     // So in addition to batching and epochs in wordPredictModel.fit,
     // We have batches and epochs at this higher level,
     // which is where the "meta" comes from.
-    const metaBatchSize = 20;
+    const metaBatchSize = 200;
 
     // Training data expands to a lot of memory. Split training so we don't have a lot
     // at the time.
@@ -594,7 +592,7 @@ export async function buildModelFromText({
     verbose,
     level,
     encodingSize
-} : BuildModelFromTextArgs) {
+}: BuildModelFromTextArgs) {
     const beforeSize: number = LEVEL_TO_BEFORE_SIZE[level];
     const vocabulary = buildVocabulary(text);
     const trainingData = await buildTrainingData({
@@ -627,7 +625,7 @@ export async function buildModelFromText({
     };
 }
 
-const oneHotWithTimestepDecoder = ({ stackedPredictionAndTimeStep, vocabulary}) => {
+const oneHotWithTimestepDecoder = ({ stackedPredictionAndTimeStep, vocabulary }) => {
     const predictionAndTimeStep = tf.unstack(stackedPredictionAndTimeStep)[0];
     const prediction = predictionAndTimeStep.slice(
         [1, 0],
@@ -746,7 +744,7 @@ export const main = async () => {
         encoderLayer,
         encodeWordIndexCache,
         decoderLayer,
-    } = await  buildModel({
+    } = await buildModel({
         vocabulary,
         trainingData,
         beforeSize,

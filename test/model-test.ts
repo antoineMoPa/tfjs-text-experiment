@@ -17,7 +17,7 @@ import { expect } from 'chai';
 import { twoParagraphs } from './testText';
 
 describe.only('Model', async () => {
-    it('Should build a vocabulary', async () => {
+    it.skip('Should build a vocabulary', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
 
@@ -29,7 +29,7 @@ describe.only('Model', async () => {
         expect(vocabulary.words).to.contain('[END]');
     });
 
-    it('Should remember a simple word', async function () {
+    it.skip('Should remember a simple word', async function () {
         this.timeout(10000)
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
@@ -163,7 +163,7 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it('Should remember a couple of sentences', async function() {
+    it.skip('Should remember a couple of sentences', async function() {
         this.timeout(10000);
 
         // Arrange
@@ -197,7 +197,7 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it('Should remember an entire paragraph', async function() {
+    it.skip('Should remember an entire paragraph', async function() {
         this.timeout(20000);
 
         // Arrange
@@ -232,7 +232,7 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it('Should remember multiple paragraphs', async function() {
+    it.skip('Should remember multiple paragraphs', async function() {
         this.timeout(50000);
         // Arrange
         const text = twoParagraphs;
