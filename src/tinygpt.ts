@@ -456,8 +456,8 @@ export async function buildModel(
         layer:
         tf.layers.dense({
             units: 200,
-            activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({}),
+            activation: 'swish',
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.5, maxval: 0.5 }),
         })
     }).apply(layerOutput) as SymbolicTensor;
 
