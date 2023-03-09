@@ -457,7 +457,8 @@ export async function buildModel(
         tf.layers.dense({
             units: 200,
             activation: 'swish',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.5, maxval: 0.5 }),
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
+            biasInitializer: tf.initializers.constant({value: -0.002}),
         })
     }).apply(layerOutput) as SymbolicTensor;
 
@@ -469,7 +470,8 @@ export async function buildModel(
                 tf.layers.dense({
                     units: encodingSize,
                     activation: "relu",
-                    kernelInitializer: tf.initializers.randomNormal({}),
+                    kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
+                    biasInitializer: tf.initializers.constant({value: -0.002}),
                     name: "output",
                 })
         });
