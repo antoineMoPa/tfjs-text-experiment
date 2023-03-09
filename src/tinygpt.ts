@@ -447,10 +447,7 @@ export async function buildModel(
         returnSequences: true,
         kernelInitializer: tf.initializers.randomUniform({}),
         recurrentInitializer: tf.initializers.randomUniform({}),
-        biasInitializer: tf.initializers.randomUniform({
-            minval: -0.03,
-            maxval: -0.03,
-        }),
+        biasInitializer: tf.initializers.constant({value: -0.03}),
         dropout: 0,
         recurrentDropout: 0,
     }).apply(layerOutput) as SymbolicTensor;
