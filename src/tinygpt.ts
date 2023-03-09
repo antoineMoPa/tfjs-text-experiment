@@ -439,7 +439,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const baseSize = 180;
+    const baseSize = 280;
 
     layerOutput = tf.layers.lstm({
         units: baseSize,
@@ -448,8 +448,8 @@ export async function buildModel(
         kernelInitializer: tf.initializers.randomUniform({}),
         recurrentInitializer: tf.initializers.randomUniform({}),
         biasInitializer: tf.initializers.randomUniform({
-            minval: -1,
-            maxval: -1,
+            minval: -0.2,
+            maxval: -0.2,
         }),
         dropout: 0,
         recurrentDropout: 0,
