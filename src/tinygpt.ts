@@ -481,7 +481,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.01;
+    const alpha = 0.015;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
@@ -520,8 +520,8 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 50,
-            batchSize: 30,
+            epochs: 35,
+            batchSize: 32,
             verbose: 0,
             shuffle: false
         });
@@ -543,7 +543,7 @@ export async function buildModel(
 
     // Training data expands to a lot of memory. Split training so we don't have a lot
     // at the time.
-    const meta_epochs = 2;
+    const meta_epochs = 5;
     for (let i = 0; i < meta_epochs; i++) {
         verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
         for (let j = 0; j < trainingData.inputs.length; j += metaBatchSize) {
