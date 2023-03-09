@@ -447,19 +447,20 @@ export async function buildModel(
         returnSequences: true,
         kernelInitializer: tf.initializers.randomUniform({}),
         recurrentInitializer: tf.initializers.randomUniform({}),
-        biasInitializer: tf.initializers.constant({value: -0.01}),
+        biasInitializer: tf.initializers.constant({value: -0.002}),
         dropout: 0,
         recurrentDropout: 0,
     }).apply(layerOutput) as SymbolicTensor;
 
-    //tf.layers.timeDistributed({
-    //    layer:
-    //    tf.layers.dense({
-    //        units: baseSize,
-    //        activation: 'relu',
-    //        kernelInitializer: tf.initializers.randomUniform({}),
-    //    })
-    //}).apply(layerOutput) as SymbolicTensor;
+    tf.layers.timeDistributed({
+        layer:
+        tf.layers.dense({
+            units: baseSize,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({}),
+
+        })
+    }).apply(layerOutput) as SymbolicTensor;
 
     // layerOutput = tf.layers.layerNormalization().apply(layerOutput) as SymbolicTensor;
 
