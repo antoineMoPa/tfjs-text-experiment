@@ -439,7 +439,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const baseSize = 380;
+    const baseSize = 410;
 
     layerOutput = tf.layers.lstm({
         units: baseSize,
@@ -455,7 +455,7 @@ export async function buildModel(
     tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 300,
+            units: 200,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
             biasInitializer: tf.initializers.constant({value: -0.02}),
