@@ -443,11 +443,11 @@ export async function buildModel(
 
     layerOutput = tf.layers.lstm({
         units: baseSize,
-        activation: 'relu',
+        activation: 'swish',
         returnSequences: true,
         kernelInitializer: tf.initializers.randomUniform({}),
         recurrentInitializer: tf.initializers.randomUniform({}),
-        biasInitializer: tf.initializers.constant({value: -0.03}),
+        biasInitializer: tf.initializers.constant({value: -0.01}),
         dropout: 0,
         recurrentDropout: 0,
     }).apply(layerOutput) as SymbolicTensor;
