@@ -78,7 +78,7 @@ describe.only('Model', async () => {
             trainingData,
             verbose: false,
             beforeSize,
-            encodingSize: 7
+            encodingSize: 10
         });
 
         // Act
@@ -88,7 +88,7 @@ describe.only('Model', async () => {
             beforeSize,
             encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 7
+            encodingSize: 10
         })
 
         // Assert

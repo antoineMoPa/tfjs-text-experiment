@@ -481,7 +481,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.008;
+    const alpha = 0.01;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
@@ -520,7 +520,7 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 70,
+            epochs: 50,
             batchSize: 30,
             verbose: 0,
             shuffle: false
