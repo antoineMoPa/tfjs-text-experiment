@@ -481,7 +481,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.015;
+    const alpha = 0.01;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
@@ -520,7 +520,7 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 35,
+            epochs: 35 * 5,
             batchSize: 32,
             verbose: 0,
             shuffle: false
@@ -534,36 +534,9 @@ export async function buildModel(
         ].forEach((tensor: tf.Tensor2D) => tensor.dispose());
     };
 
-    // To save memory and process all corpus,
-    // we fit the model on parts of the corpus and repeat the process.
-    // So in addition to batching and epochs in wordPredictModel.fit,
-    // We have batches and epochs at this higher level,
-    // which is where the "meta" comes from.
-    const metaBatchSize = 200;
-
-    // Training data expands to a lot of memory. Split training so we don't have a lot
-    // at the time.
-    const meta_epochs = 5;
-    for (let i = 0; i < meta_epochs; i++) {
-        verbose && console.log(`Meta epoch ${i}/${meta_epochs}.`);
-        for (let j = 0; j < trainingData.inputs.length; j += metaBatchSize) {
-            verbose && console.log(`Training on data ${j} to ${j + metaBatchSize} of ${trainingData.inputs.length}`);
-            const batchInputs = trainingData.inputs.slice(j, j + metaBatchSize);
-            const batchOutputs = trainingData.expectedOutputs.slice(j, j + metaBatchSize);
-
-            await trainOnBatch(batchInputs, batchOutputs);
-        }
-        const str = await predictUntilEnd('Horse breeds are loosely divided into', {
-            vocabulary,
-            wordPredictModel,
-            beforeSize,
-            encoderLayer,
-            decoderLayer,
-            encodeWordIndexCache,
-            encodingSize
-        });
-        verbose && console.log(`${str}`);
-    }
+    const batchInputs = trainingData.inputs;
+    const batchOutputs = trainingData.expectedOutputs;
+    await trainOnBatch(batchInputs, batchOutputs);
 
     return {
         wordPredictModel,
