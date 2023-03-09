@@ -439,7 +439,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const baseSize = 280;
+    const baseSize = 330;
 
     layerOutput = tf.layers.lstm({
         units: baseSize,

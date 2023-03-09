@@ -232,7 +232,7 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it.skip('Should remember multiple paragraphs', async function() {
+    it('Should remember multiple paragraphs', async function() {
         this.timeout(50000);
         // Arrange
         const text = twoParagraphs;
