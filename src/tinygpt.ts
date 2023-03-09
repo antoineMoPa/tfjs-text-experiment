@@ -456,9 +456,9 @@ export async function buildModel(
         layer:
         tf.layers.dense({
             units: 300,
-            activation: 'swish',
+            activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-            biasInitializer: tf.initializers.constant({value: -0.002}),
+            biasInitializer: tf.initializers.constant({value: -0.02}),
         })
     }).apply(layerOutput) as SymbolicTensor;
 
