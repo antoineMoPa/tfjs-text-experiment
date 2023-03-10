@@ -452,15 +452,15 @@ export async function buildModel(
         });
     };
 
-    // const lstm1 = buildLSTM(250);
-    // const lstm2 = buildLSTM(250);
+    const lstm1 = buildLSTM(340).apply(layerOutput) as SymbolicTensor;
+    const lstm2 = buildLSTM(340).apply(layerOutput) as SymbolicTensor;
 
-    layerOutput = buildLSTM().apply(layerOutput) as SymbolicTensor;
+    layerOutput = tf.layers.concatenate().apply([lstm1, lstm2]) as SymbolicTensor;
 
     tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 200,
+            units: 260,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
             biasInitializer: tf.initializers.constant({value: -0.01}),
