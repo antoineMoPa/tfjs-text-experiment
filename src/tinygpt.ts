@@ -463,8 +463,8 @@ export async function buildModel(
     };
 
     layerOutput = tf.layers.concatenate().apply([
-        buildLSTM(128, layerOutput),
-        buildLSTM(128, layerOutput),
+        buildLSTM(256, layerOutput),
+        buildLSTM(256, layerOutput),
         buildLSTM(128, layerOutput),
         buildLSTM(128, layerOutput),
     ]) as SymbolicTensor;
@@ -472,10 +472,10 @@ export async function buildModel(
     tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 256,
+            units: 350,
             activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-            biasInitializer: tf.initializers.constant({value: -0.01}),
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
+            biasInitializer: tf.initializers.constant({ value: -0.01 }),
         })
     }).apply(layerOutput) as SymbolicTensor;
 
@@ -486,7 +486,7 @@ export async function buildModel(
                     units: encodingSize,
                     activation: "relu",
                     kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-                    biasInitializer: tf.initializers.randomUniform({ minval: -0.001, maxval: 0.001}),
+                    biasInitializer: tf.initializers.constant({ value: -0.01 }),
                     name: "output",
                 })
         });
@@ -496,7 +496,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.01;
+    const alpha = 0.003;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
