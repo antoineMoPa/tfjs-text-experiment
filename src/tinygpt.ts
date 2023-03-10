@@ -452,15 +452,16 @@ export async function buildModel(
         });
     };
 
-    const lstm1 = buildLSTM(340).apply(layerOutput) as SymbolicTensor;
-    const lstm2 = buildLSTM(340).apply(layerOutput) as SymbolicTensor;
+    const lstm1 = buildLSTM(350).apply(layerOutput) as SymbolicTensor;
+    const lstm2 = buildLSTM(200).apply(layerOutput) as SymbolicTensor;
+    const lstm3 = buildLSTM(100).apply(layerOutput) as SymbolicTensor;
 
-    layerOutput = tf.layers.concatenate().apply([lstm1, lstm2]) as SymbolicTensor;
+    layerOutput = tf.layers.concatenate().apply([lstm1, lstm2, lstm3]) as SymbolicTensor;
 
     tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 260,
+            units: 230,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
             biasInitializer: tf.initializers.constant({value: -0.01}),
@@ -526,7 +527,7 @@ export async function buildModel(
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs: 100,
-            batchSize: encodingSize, // Looks like this scales well with encoding size
+            batchSize: 50,
             verbose: encodingSize > 35 ? 1 : 0,
             shuffle: true
         });
