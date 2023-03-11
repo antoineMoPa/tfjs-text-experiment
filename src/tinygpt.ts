@@ -439,9 +439,25 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const buildLSTM = (baseSize, layerOutput) => {
-        const output = tf.layers.lstm({
-            units: baseSize,
+    const stages = Array(3).fill(0).map((_, i) => {
+        let output = layerOutput;
+
+        if (i > 0)
+            output = tf.layers.timeDistributed({
+                layer:
+                tf.layers.dense({
+                    units: 300,
+                    activation: 'relu',
+                    kernelInitializer: tf.initializers.randomUniform({
+                        minval: -0.1,
+                        maxval: 0.1
+                    }),
+                    biasInitializer: tf.initializers.constant({value: -0.01}),
+                })
+            }).apply(layerOutput) as SymbolicTensor;
+
+        output = tf.layers.lstm({
+            units: 300,
             activation: 'relu',
             returnSequences: true,
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
@@ -449,40 +465,38 @@ export async function buildModel(
             biasInitializer: tf.initializers.constant({value: -0.01}),
             dropout: 0,
             recurrentDropout: 0,
-        }).apply(layerOutput) as SymbolicTensor;
+        }).apply(output) as SymbolicTensor;
 
-        return tf.layers.timeDistributed({
+        output = tf.layers.timeDistributed({
             layer:
             tf.layers.dense({
-                units: baseSize,
+                units: 300,
                 activation: 'relu',
-                kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
+                kernelInitializer: tf.initializers.randomUniform({
+                    minval: -0.1,
+                    maxval: 0.1
+                }),
                 biasInitializer: tf.initializers.constant({value: -0.01}),
             })
         }).apply(output) as SymbolicTensor;
-    };
 
-    //layerOutput = tf.layers.concatenate().apply([
-    //    buildLSTM(128, layerOutput),
-    //    buildLSTM(256, layerOutput),
-    //    buildLSTM(512, layerOutput),
-    //    buildLSTM(128, layerOutput),
-    //]) as SymbolicTensor;
+        output = tf.layers.concatenate().apply([
+            inputs,
+            output,
+        ]) as SymbolicTensor;
 
-    layerOutput = tf.layers.concatenate().apply([
-        inputs,
-        buildLSTM(400, layerOutput),
-    ]) as SymbolicTensor;
+        return layerOutput = output;
+    });
 
-    // tf.layers.timeDistributed({
-    //     layer:
-    //     tf.layers.dense({
-    //         units: 350,
-    //         activation: 'relu',
-    //         kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
-    //         biasInitializer: tf.initializers.constant({ value: -0.01 }),
-    //     })
-    // }).apply(layerOutput) as SymbolicTensor;
+    layerOutput = tf.layers.timeDistributed({
+        layer:
+        tf.layers.dense({
+            units: 350,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
+            biasInitializer: tf.initializers.constant({ value: -0.01 }),
+        })
+    }).apply(layerOutput) as SymbolicTensor;
 
     const outputLayer =
         tf.layers.timeDistributed({
@@ -501,7 +515,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.003;
+    const alpha = 0.004;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
