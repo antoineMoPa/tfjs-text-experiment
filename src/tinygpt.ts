@@ -285,6 +285,7 @@ type BuildModelArgs = {
      */
     beforeSize: number,
     encodingSize?: number
+    epochs?: number,
 };
 
 const encodeWordIndex = (
@@ -412,6 +413,7 @@ export async function buildModel(
         level,
         beforeSize,
         encodingSize = 128,
+        epochs = 60,
     }: BuildModelArgs
 ): Promise<{
     wordPredictModel: tf.LayersModel;
@@ -440,13 +442,13 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const lstmTower = (inputs) => {
-        const SIZE = 22;
+        const SIZE = 35;
 
         let layerOutput = inputs;
 
         Array(SIZE).fill(0).map((_, i) => {
             let output = inputs;
-            const units = 310;
+            const units = 340;
 
             const dense = () => {
                 output = tf.layers.timeDistributed({
@@ -499,9 +501,9 @@ export async function buildModel(
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 410,
+            units: 420,
             activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
         })
     }).apply(layerOutput) as SymbolicTensor;
@@ -565,7 +567,7 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 60,
+            epochs,
             batchSize: 50,
             verbose: encodingSize > 35 ? 1 : 0,
             shuffle: true
@@ -595,7 +597,8 @@ type BuildModelFromTextArgs = {
     text?: string,
     verbose?: boolean,
     level?: number,
-    encodingSize?: number
+    encodingSize?: number,
+    epochs?: number
 };
 
 const LEVEL_TO_BEFORE_SIZE = {
@@ -608,7 +611,8 @@ export async function buildModelFromText({
     text,
     verbose,
     level,
-    encodingSize
+    encodingSize,
+    epochs
 }: BuildModelFromTextArgs) {
     const beforeSize: number = LEVEL_TO_BEFORE_SIZE[level];
     const vocabulary = buildVocabulary(text);
@@ -629,7 +633,8 @@ export async function buildModelFromText({
         verbose,
         level,
         beforeSize,
-        encodingSize
+        encodingSize,
+        epochs,
     });
 
     return {

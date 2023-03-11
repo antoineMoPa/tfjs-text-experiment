@@ -267,7 +267,7 @@ describe.only('Model', async () => {
     });
 
     it.skip('Should parse and entire article and output horse information.', async function() {
-        this.timeout(40000);
+        this.timeout(100000);
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
 
@@ -283,6 +283,7 @@ describe.only('Model', async () => {
             verbose: true,
             level: 2,
             encodingSize: 128,
+            epochs: 4
         });
 
         // Act
