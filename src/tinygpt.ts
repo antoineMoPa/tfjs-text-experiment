@@ -454,8 +454,8 @@ export async function buildModel(
                         units: 280,
                         activation: 'relu',
                         kernelInitializer: tf.initializers.randomUniform({
-                            minval: -0.01,
-                            maxval: 0.01
+                            minval: -0.03,
+                            maxval: 0.03
                         }),
                         biasInitializer: tf.initializers.constant({value: -0.01}),
                     })
