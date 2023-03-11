@@ -442,16 +442,15 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const lstmTower = (inputs) => {
-        const SIZE = 35;
+        const SIZE = 4;
 
         let layerOutput = inputs;
 
         Array(SIZE).fill(0).map((_, i) => {
-            let output = inputs;
-            const units = 340;
+            const units = 380;
 
             const dense = () => {
-                output = tf.layers.timeDistributed({
+                layerOutput = tf.layers.timeDistributed({
                     layer:
                     tf.layers.dense({
                         units,
@@ -462,12 +461,12 @@ export async function buildModel(
                         }),
                         biasInitializer: tf.initializers.constant({value: -0.01}),
                     })
-                }).apply(output) as SymbolicTensor;
+                }).apply(layerOutput) as SymbolicTensor;
             };
 
             dense();
 
-            output = tf.layers.lstm({
+            layerOutput = tf.layers.lstm({
                 units,
                 activation: 'relu',
                 returnSequences: true,
@@ -482,15 +481,13 @@ export async function buildModel(
                 biasInitializer: tf.initializers.constant({value: -0.01}),
                 dropout: 0.05,
                 recurrentDropout: 0,
-            }).apply(output) as SymbolicTensor;
+            }).apply(layerOutput) as SymbolicTensor;
 
             if (i == SIZE - 1 || i % 2 == 0)
-                output = tf.layers.concatenate().apply([
+                layerOutput = tf.layers.concatenate().apply([
                     inputs,
-                    output,
+                    layerOutput,
                 ]) as SymbolicTensor;
-
-            layerOutput = output;
         });
 
         return layerOutput;
@@ -501,7 +498,7 @@ export async function buildModel(
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 420,
+            units: 450,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
