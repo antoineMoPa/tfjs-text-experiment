@@ -440,7 +440,7 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const buildLSTM = (baseSize, layerOutput) => {
-        let output = tf.layers.lstm({
+        const output = tf.layers.lstm({
             units: baseSize,
             activation: 'relu',
             returnSequences: true,
@@ -473,17 +473,6 @@ export async function buildModel(
         inputs,
         buildLSTM(400, layerOutput),
     ]) as SymbolicTensor;
-
-    layerOutput = tf.layers.concatenate().apply([
-        buildLSTM(300, inputs),
-        buildLSTM(300, layerOutput),
-    ]) as SymbolicTensor;
-
-    layerOutput = tf.layers.concatenate().apply([
-        inputs,
-        buildLSTM(300, layerOutput),
-    ]) as SymbolicTensor;
-
 
     // tf.layers.timeDistributed({
     //     layer:
