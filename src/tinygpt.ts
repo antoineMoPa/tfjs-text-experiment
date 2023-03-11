@@ -471,18 +471,19 @@ export async function buildModel(
 
     layerOutput = tf.layers.concatenate().apply([
         inputs,
-        buildLSTM(100, layerOutput),
+        buildLSTM(400, layerOutput),
     ]) as SymbolicTensor;
 
     layerOutput = tf.layers.concatenate().apply([
-        inputs,
-        buildLSTM(200, layerOutput),
+        buildLSTM(300, inputs),
+        buildLSTM(300, layerOutput),
     ]) as SymbolicTensor;
 
     layerOutput = tf.layers.concatenate().apply([
         inputs,
         buildLSTM(300, layerOutput),
     ]) as SymbolicTensor;
+
 
     // tf.layers.timeDistributed({
     //     layer:
