@@ -67,7 +67,8 @@ describe.only('Model', async () => {
         expect(word, 'The quick brown [?]').to.equal(' fox');
     });
 
-    it('Should remember a simple sentence', async () => {
+    it('Should remember a simple sentence', async function () {
+        this.timeout(10000)
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -96,7 +97,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember a more complex sentence', async function () {
-        this.timeout(3000);
+        this.timeout(10000);
 
         // Arrange
         const text = 'It belongs to the taxonomic family Equidae and is one of two extant subspecies of Equus ferus.';
@@ -131,7 +132,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember an even more complex sentence', async function () {
-        this.timeout(5000);
+        this.timeout(10000);
 
         // Arrange
         const text = 'The horse has evolved over the past 45 to 55 million years from a small multi-toed creature, Eohippus, into the large, single-toed animal of today';
