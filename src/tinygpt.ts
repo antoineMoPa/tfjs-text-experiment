@@ -439,7 +439,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const stages = Array(3).fill(0).map((_, i) => {
+    const stages = Array(4).fill(0).map((_, i) => {
         let output = layerOutput;
 
         if (i > 0)
@@ -460,7 +460,7 @@ export async function buildModel(
             units: 300,
             activation: 'relu',
             returnSequences: true,
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.01, maxval: 0.01 }),
             recurrentInitializer: tf.initializers.randomUniform({}),
             biasInitializer: tf.initializers.constant({value: -0.01}),
             dropout: 0,
@@ -473,17 +473,18 @@ export async function buildModel(
                 units: 300,
                 activation: 'relu',
                 kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.1,
-                    maxval: 0.1
+                    minval: -0.01,
+                    maxval: 0.01
                 }),
                 biasInitializer: tf.initializers.constant({value: -0.01}),
             })
         }).apply(output) as SymbolicTensor;
 
-        output = tf.layers.concatenate().apply([
-            inputs,
-            output,
-        ]) as SymbolicTensor;
+        if (i % 3 == 0)
+            output = tf.layers.concatenate().apply([
+                inputs,
+                output,
+            ]) as SymbolicTensor;
 
         return layerOutput = output;
     });
