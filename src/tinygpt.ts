@@ -440,7 +440,7 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const lstmTower = (inputs) => {
-        const SIZE = 13;
+        const SIZE = 18;
 
         let layerOutput = inputs;
 
@@ -451,11 +451,11 @@ export async function buildModel(
                 output = tf.layers.timeDistributed({
                     layer:
                     tf.layers.dense({
-                        units: 240,
+                        units: 260,
                         activation: 'relu',
                         kernelInitializer: tf.initializers.randomUniform({
-                            minval: -0.1,
-                            maxval: 0.1
+                            minval: -0.01,
+                            maxval: 0.01
                         }),
                         biasInitializer: tf.initializers.constant({value: -0.01}),
                     })
@@ -465,7 +465,7 @@ export async function buildModel(
             dense();
 
             output = tf.layers.lstm({
-                units: 190,
+                units: 250,
                 activation: 'relu',
                 returnSequences: true,
                 kernelInitializer: tf.initializers.randomUniform({
