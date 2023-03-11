@@ -439,14 +439,15 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const stages = Array(4).fill(0).map((_, i) => {
+    const SIZE = 6;
+    const stages = Array(SIZE).fill(0).map((_, i) => {
         let output = layerOutput;
 
-        if (i > 0)
+        const dense = () => {
             output = tf.layers.timeDistributed({
                 layer:
                 tf.layers.dense({
-                    units: 260,
+                    units: 200,
                     activation: 'relu',
                     kernelInitializer: tf.initializers.randomUniform({
                         minval: -0.1,
@@ -454,33 +455,30 @@ export async function buildModel(
                     }),
                     biasInitializer: tf.initializers.constant({value: -0.01}),
                 })
-            }).apply(layerOutput) as SymbolicTensor;
+            }).apply(output) as SymbolicTensor;
+        };
+
+        if (i > 0)
+            dense();
 
         output = tf.layers.lstm({
-            units: 260,
+            units: 200,
             activation: 'relu',
             returnSequences: true,
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.01, maxval: 0.01 }),
+            kernelInitializer: tf.initializers.randomUniform({
+                minval: -0.01,
+                maxval: 0.01
+            }),
             recurrentInitializer: tf.initializers.randomUniform({}),
             biasInitializer: tf.initializers.constant({value: -0.01}),
             dropout: 0,
             recurrentDropout: 0,
         }).apply(output) as SymbolicTensor;
 
-        output = tf.layers.timeDistributed({
-            layer:
-            tf.layers.dense({
-                units: 260,
-                activation: 'relu',
-                kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.01,
-                    maxval: 0.01
-                }),
-                biasInitializer: tf.initializers.constant({value: -0.01}),
-            })
-        }).apply(output) as SymbolicTensor;
+        if (i == 0)
+            dense();
 
-        if (i % 3 == 0)
+        if (i == SIZE - 1 || i % 2 == 0)
             output = tf.layers.concatenate().apply([
                 inputs,
                 output,
@@ -492,7 +490,7 @@ export async function buildModel(
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 300,
+            units: 260,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
