@@ -465,7 +465,7 @@ export async function buildModel(
             dense();
 
             output = tf.layers.lstm({
-                units: 260,
+                units: 270,
                 activation: 'relu',
                 returnSequences: true,
                 kernelInitializer: tf.initializers.randomUniform({
@@ -474,8 +474,8 @@ export async function buildModel(
                 }),
                 recurrentInitializer: tf.initializers.randomUniform({}),
                 biasInitializer: tf.initializers.constant({value: -0.01}),
-                dropout: 0.001,
-                recurrentDropout: 0.001,
+                dropout: 0.1,
+                recurrentDropout: 0,
             }).apply(output) as SymbolicTensor;
 
             if (i == SIZE - 1 || i % 2 == 0)
