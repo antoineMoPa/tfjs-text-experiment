@@ -446,16 +446,17 @@ export async function buildModel(
 
         Array(SIZE).fill(0).map((_, i) => {
             let output = inputs;
+            const units = 300;
 
             const dense = () => {
                 output = tf.layers.timeDistributed({
                     layer:
                     tf.layers.dense({
-                        units: 280,
+                        units,
                         activation: 'relu',
                         kernelInitializer: tf.initializers.randomUniform({
-                            minval: -0.02,
-                            maxval: 0.02
+                            minval: -0.015,
+                            maxval: 0.015
                         }),
                         biasInitializer: tf.initializers.constant({value: -0.01}),
                     })
@@ -465,14 +466,17 @@ export async function buildModel(
             dense();
 
             output = tf.layers.lstm({
-                units: 280,
+                units,
                 activation: 'relu',
                 returnSequences: true,
                 kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.005,
-                    maxval: 0.005
+                    minval: -0.002,
+                    maxval: 0.002
                 }),
-                recurrentInitializer: tf.initializers.randomUniform({}),
+                recurrentInitializer: tf.initializers.randomUniform({
+                    minval: -0.002,
+                    maxval: 0.002
+                }),
                 biasInitializer: tf.initializers.constant({value: -0.01}),
                 dropout: 0.1,
                 recurrentDropout: 0,
