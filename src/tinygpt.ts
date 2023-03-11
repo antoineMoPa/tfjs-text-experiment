@@ -439,49 +439,58 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const SIZE = 10;
-    const stages = Array(SIZE).fill(0).map((_, i) => {
-        let output = layerOutput;
+    const lstmTower = (inputs) => {
+        const SIZE = 10;
 
-        const dense = () => {
-            output = tf.layers.timeDistributed({
-                layer:
-                tf.layers.dense({
-                    units: 230,
-                    activation: 'relu',
-                    kernelInitializer: tf.initializers.randomUniform({
-                        minval: -0.1,
-                        maxval: 0.1
-                    }),
-                    biasInitializer: tf.initializers.constant({value: -0.01}),
-                })
+        let layerOutput = inputs;
+
+        Array(SIZE).fill(0).map((_, i) => {
+            let output = inputs;
+
+            const dense = () => {
+                output = tf.layers.timeDistributed({
+                    layer:
+                    tf.layers.dense({
+                        units: 230,
+                        activation: 'relu',
+                        kernelInitializer: tf.initializers.randomUniform({
+                            minval: -0.1,
+                            maxval: 0.1
+                        }),
+                        biasInitializer: tf.initializers.constant({value: -0.01}),
+                    })
+                }).apply(output) as SymbolicTensor;
+            };
+
+            dense();
+
+            output = tf.layers.lstm({
+                units: 180,
+                activation: 'relu',
+                returnSequences: true,
+                kernelInitializer: tf.initializers.randomUniform({
+                    minval: -0.01,
+                    maxval: 0.01
+                }),
+                recurrentInitializer: tf.initializers.randomUniform({}),
+                biasInitializer: tf.initializers.constant({value: -0.01}),
+                dropout: 0.001,
+                recurrentDropout: 0.001,
             }).apply(output) as SymbolicTensor;
-        };
 
-        dense();
+            if (i == SIZE - 1 || i % 2 == 0)
+                output = tf.layers.concatenate().apply([
+                    inputs,
+                    output,
+                ]) as SymbolicTensor;
 
-        output = tf.layers.lstm({
-            units: 180,
-            activation: 'relu',
-            returnSequences: true,
-            kernelInitializer: tf.initializers.randomUniform({
-                minval: -0.01,
-                maxval: 0.01
-            }),
-            recurrentInitializer: tf.initializers.randomUniform({}),
-            biasInitializer: tf.initializers.constant({value: -0.01}),
-            dropout: 0.001,
-            recurrentDropout: 0.001,
-        }).apply(output) as SymbolicTensor;
+            layerOutput = output;
+        });
 
-        if (i == SIZE - 1 || i % 2 == 0)
-            output = tf.layers.concatenate().apply([
-                inputs,
-                output,
-            ]) as SymbolicTensor;
+        return layerOutput;
+    }
 
-        return layerOutput = output;
-    });
+    layerOutput = lstmTower(layerOutput);
 
     layerOutput = tf.layers.timeDistributed({
         layer:

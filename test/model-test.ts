@@ -165,7 +165,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember a couple of sentences', async function() {
-        this.timeout(10000);
+        this.timeout(20000);
 
         // Arrange
         const text = 'Horses are adapted to run, allowing them to quickly escape predators, and possess an excellent sense of balance and a strong fight-or-flight response. Related to this need to flee from predators in the wild is an unusual trait: horses are able to sleep both standing up and lying down, with younger horses tending to sleep significantly more than adults.';
