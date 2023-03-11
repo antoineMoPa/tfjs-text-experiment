@@ -451,7 +451,7 @@ export async function buildModel(
                 output = tf.layers.timeDistributed({
                     layer:
                     tf.layers.dense({
-                        units: 270,
+                        units: 280,
                         activation: 'relu',
                         kernelInitializer: tf.initializers.randomUniform({
                             minval: -0.01,
@@ -495,7 +495,7 @@ export async function buildModel(
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 370,
+            units: 375,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
