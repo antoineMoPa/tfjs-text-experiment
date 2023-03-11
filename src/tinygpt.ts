@@ -442,13 +442,12 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const lstmTower = (inputs) => {
-        const SIZE = 4;
 
         let layerOutput = inputs;
+        const unitsList = [32, 64, 128, 256, 128];
+        const SIZE = unitsList.length;
 
-        Array(SIZE).fill(0).map((_, i) => {
-            const units = 380;
-
+        unitsList.map((units, i) => {
             const dense = () => {
                 layerOutput = tf.layers.timeDistributed({
                     layer:
