@@ -446,7 +446,7 @@ export async function buildModel(
             output = tf.layers.timeDistributed({
                 layer:
                 tf.layers.dense({
-                    units: 300,
+                    units: 260,
                     activation: 'relu',
                     kernelInitializer: tf.initializers.randomUniform({
                         minval: -0.1,
@@ -457,7 +457,7 @@ export async function buildModel(
             }).apply(layerOutput) as SymbolicTensor;
 
         output = tf.layers.lstm({
-            units: 300,
+            units: 260,
             activation: 'relu',
             returnSequences: true,
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.01, maxval: 0.01 }),
@@ -470,7 +470,7 @@ export async function buildModel(
         output = tf.layers.timeDistributed({
             layer:
             tf.layers.dense({
-                units: 300,
+                units: 260,
                 activation: 'relu',
                 kernelInitializer: tf.initializers.randomUniform({
                     minval: -0.01,
@@ -492,7 +492,7 @@ export async function buildModel(
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 350,
+            units: 300,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
@@ -516,7 +516,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.004;
+    const alpha = 0.005;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
@@ -555,7 +555,7 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 60,
+            epochs: 45,
             batchSize: 40,
             verbose: encodingSize > 35 ? 1 : 0,
             shuffle: true
