@@ -440,7 +440,7 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const buildLSTM = (baseSize, layerOutput) => {
-        const output = tf.layers.lstm({
+        let output = tf.layers.lstm({
             units: baseSize,
             activation: 'relu',
             returnSequences: true,
@@ -462,22 +462,37 @@ export async function buildModel(
         }).apply(output) as SymbolicTensor;
     };
 
+    //layerOutput = tf.layers.concatenate().apply([
+    //    buildLSTM(128, layerOutput),
+    //    buildLSTM(256, layerOutput),
+    //    buildLSTM(512, layerOutput),
+    //    buildLSTM(128, layerOutput),
+    //]) as SymbolicTensor;
+
     layerOutput = tf.layers.concatenate().apply([
-        buildLSTM(256, layerOutput),
-        buildLSTM(256, layerOutput),
-        buildLSTM(128, layerOutput),
-        buildLSTM(128, layerOutput),
+        inputs,
+        buildLSTM(100, layerOutput),
     ]) as SymbolicTensor;
 
-    tf.layers.timeDistributed({
-        layer:
-        tf.layers.dense({
-            units: 350,
-            activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
-            biasInitializer: tf.initializers.constant({ value: -0.01 }),
-        })
-    }).apply(layerOutput) as SymbolicTensor;
+    layerOutput = tf.layers.concatenate().apply([
+        inputs,
+        buildLSTM(200, layerOutput),
+    ]) as SymbolicTensor;
+
+    layerOutput = tf.layers.concatenate().apply([
+        inputs,
+        buildLSTM(300, layerOutput),
+    ]) as SymbolicTensor;
+
+    // tf.layers.timeDistributed({
+    //     layer:
+    //     tf.layers.dense({
+    //         units: 350,
+    //         activation: 'relu',
+    //         kernelInitializer: tf.initializers.randomUniform({ minval: -0.15, maxval: 0.15 }),
+    //         biasInitializer: tf.initializers.constant({ value: -0.01 }),
+    //     })
+    // }).apply(layerOutput) as SymbolicTensor;
 
     const outputLayer =
         tf.layers.timeDistributed({
@@ -535,8 +550,8 @@ export async function buildModel(
         const concatenatedOutput = tf.stack(trainingOutputs);
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
-            epochs: 70,
-            batchSize: 50,
+            epochs: 60,
+            batchSize: 40,
             verbose: encodingSize > 35 ? 1 : 0,
             shuffle: true
         });
