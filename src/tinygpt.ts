@@ -444,10 +444,9 @@ export async function buildModel(
     const lstmTower = (inputs) => {
 
         let layerOutput = inputs;
-        const unitsList = [32, 64, 128, 256, 128];
-        const SIZE = unitsList.length;
+        const unitsList = [128, 256, 1024, 512, 256, 128];
 
-        unitsList.map((units, i) => {
+        unitsList.map((units) => {
             const dense = () => {
                 layerOutput = tf.layers.timeDistributed({
                     layer:
@@ -482,11 +481,10 @@ export async function buildModel(
                 recurrentDropout: 0,
             }).apply(layerOutput) as SymbolicTensor;
 
-            if (i == SIZE - 1 || i % 2 == 0)
-                layerOutput = tf.layers.concatenate().apply([
-                    inputs,
-                    layerOutput,
-                ]) as SymbolicTensor;
+            layerOutput = tf.layers.concatenate().apply([
+                inputs,
+                layerOutput,
+            ]) as SymbolicTensor;
         });
 
         return layerOutput;

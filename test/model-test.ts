@@ -234,7 +234,7 @@ describe.only('Model', async () => {
     });
 
     it('Should remember 2 paragraphs', async function() {
-        this.timeout(50000);
+        this.timeout(100000);
         // Arrange
         const text = twoParagraphs;
 
@@ -250,6 +250,7 @@ describe.only('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
+            epochs: 45
         });
 
         // Act
@@ -268,7 +269,7 @@ describe.only('Model', async () => {
 
 
     it('Should remember 3 paragraphs', async function() {
-        this.timeout(50000);
+        this.timeout(100000);
         // Arrange
         const text = threeParagraphs;
 
@@ -284,6 +285,7 @@ describe.only('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
+            epochs: 45
         });
 
         // Act
