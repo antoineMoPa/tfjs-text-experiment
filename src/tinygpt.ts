@@ -441,10 +441,8 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const lstmTower = (inputs) => {
-
-        let layerOutput = inputs;
-        const unitsList = [128, 256, 1024, 512, 256, 128];
+    const lstmTower = (layerOutput, inputs) => {
+        const unitsList = [128, 512, 128];
 
         unitsList.map((units) => {
             const dense = () => {
@@ -490,7 +488,15 @@ export async function buildModel(
         return layerOutput;
     }
 
-    layerOutput = lstmTower(layerOutput);
+    const tower1 = lstmTower(layerOutput, inputs);
+    const tower2 = lstmTower(layerOutput, inputs);
+
+    layerOutput = tf.layers.concatenate().apply([
+        tower1,
+        tower2,
+    ]) as SymbolicTensor;
+
+    layerOutput = lstmTower(layerOutput, inputs) as SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
