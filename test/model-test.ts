@@ -14,7 +14,7 @@ import {
 
 import { expect } from 'chai';
 
-import { twoParagraphs } from './testText';
+import { threeParagraphs, twoParagraphs } from './testText';
 
 describe.only('Model', async () => {
     it.skip('Should build a vocabulary', async () => {
@@ -233,10 +233,44 @@ describe.only('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     });
 
-    it('Should remember multiple paragraphs', async function() {
+    it('Should remember 2 paragraphs', async function() {
         this.timeout(50000);
         // Arrange
         const text = twoParagraphs;
+
+        const {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            decoderLayer,
+            encodeWordIndexCache,
+        } = await buildModelFromText({
+            text,
+            verbose: true,
+            level: 1,
+            encodingSize: 50,
+        });
+
+        // Act
+        const sentence = await predictUntilEnd("Horse breeds are loosely divided into", {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer, decoderLayer,
+            encodeWordIndexCache,
+            encodingSize: 50,
+        });
+
+        // Assert
+        expect(sentence).to.equal((text + '[END]'));
+    });
+
+
+    it('Should remember 3 paragraphs', async function() {
+        this.timeout(50000);
+        // Arrange
+        const text = threeParagraphs;
 
         const {
             wordPredictModel,
