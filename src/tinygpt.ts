@@ -9,25 +9,29 @@ import LRU from 'lru-cache';
 
 export const CORPUS_PATH = "data/corpus";
 
+class SliceLayer extends tf.layers.Layer {
+    sliceStart: number[];
+    sliceSize: number[];
 
-// TEST: custom layer
-class MyCustomLayer extends tf.layers.Layer {
-    alpha: number;
-    x: tf.LayerVariable;
-
-    constructor(config) {
+    constructor(config: { sliceStart: number[]; sliceSize: number[] } & any) {
         super(config);
-        this.alpha = config.alpha;
+        this.sliceStart = config.sliceStart
+        this.sliceSize = config.sliceSize;
     }
 
-    build(inputShape) {
-        this.x = this.addWeight('x', [], 'float32', tf.initializers.ones());
+    computeOutputShape(inputShape) {
+        return [inputShape[0], this.sliceSize[1], this.sliceSize[2]]
     }
 
     call(input) {
         return tf.tidy(() => {
-            const k = tf.pow(this.x.read(), this.alpha);
-            return tf.mul(input[0], k);
+            return tf.slice(
+                input[0],
+                this.sliceStart,
+                this.sliceSize
+            );
+            // const k = tf.pow(this.x.read(), this.alpha);
+            // return tf.mul(input[0], k);
         });
     }
 
@@ -37,16 +41,19 @@ class MyCustomLayer extends tf.layers.Layer {
      */
     getConfig() {
         const config = super.getConfig();
-        Object.assign(config, {alpha: this.alpha});
+
+        config.sliceStart = this.sliceStart;
+        config.sliceSize = this.sliceSize;
+
         return config;
     }
 
     static get className() {
-        return 'MyCustomLayer';
+        return 'SliceLayer';
     }
 }
 
-tf.serialization.registerClass(MyCustomLayer);
+tf.serialization.registerClass(SliceLayer);
 
 type WordIndexCache = LRU<string, tf.Tensor>;
 
@@ -529,7 +536,29 @@ export async function buildModel(
         return { towerOutput, stages};
     }
 
-    layerOutput = lstmTower(layerOutput, inputs).towerOutput;
+    layerOutput = tf.layers.timeDistributed({
+        layer:
+        tf.layers.dense({
+            units: 128,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
+            biasInitializer: tf.initializers.constant({ value: -0.01 }),
+        })
+    }).apply(layerOutput) as SymbolicTensor;
+
+    const tower1Input = (new SliceLayer({
+        sliceStart: [0,0,0],
+        sliceSize: [-1,2,64]
+    })).apply(layerOutput) as tf.SymbolicTensor;
+    const tower2Input = (new SliceLayer({
+        sliceStart: [0,0,64],
+        sliceSize: [-1,2,64]
+    })).apply(layerOutput) as tf.SymbolicTensor;
+
+    const tower1Output = lstmTower(tower1Input, tower1Input).towerOutput;
+    const tower2Output = lstmTower(tower2Input, tower2Input).towerOutput;
+
+    layerOutput = tf.layers.concatenate().apply([tower1Output, tower2Output]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
@@ -540,17 +569,6 @@ export async function buildModel(
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
         })
     }).apply(layerOutput) as SymbolicTensor;
-
-    layerOutput = tf.layers.timeDistributed({
-        layer:
-        tf.layers.dense({
-            units: 128,
-            activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.01, maxval: 0.01}),
-            biasInitializer: tf.initializers.constant({ value: -0.01 }),
-        })
-    }).apply(layerOutput) as SymbolicTensor;
-
 
     const outputLayer =
         tf.layers.timeDistributed({
@@ -814,7 +832,7 @@ export const main = async () => {
         vocabulary,
         trainingData,
         beforeSize,
-        level: 2,
+        level: 0,
         verbose: true,
     });
 
