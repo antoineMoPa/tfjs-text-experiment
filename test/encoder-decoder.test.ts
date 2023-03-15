@@ -8,13 +8,11 @@ import {
 } from '../src/tinygpt';
 
 import { buildEncoderDecoder } from '../src/encoderDecoder';
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 import { twoParagraphs } from './testText';
 
 describe('Vocabulary EncoderDecoder', async () => {
     it('Encodes a token', async function () {
-        this.timeout(5000);
-
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -30,11 +28,9 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Assert
         expect(tokenIndex).to.equal(0);
-    });
+    }, 5000);
 
     it('Encodes a tiny vocabulary', async function () {
-        this.timeout(5000);
-
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -55,11 +51,9 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Assert
         expect(encoded).to.deep.equal(decoded);
-    });
+    }, 5000);
 
     it('Encodes a large vocabulary', async function () {
-        this.timeout(10000);
-
         // Arrange
         const text = twoParagraphs;
         const vocabulary = buildVocabulary(text);
@@ -80,11 +74,9 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Assert
         expect(encoded).to.deep.equal(decoded);
-    });
+    }, 10000);
 
     it('Encodes entire text vocabulary', async function () {
-        this.timeout(50000);
-
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
         const vocabulary = buildVocabulary(text);
@@ -108,11 +100,9 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Assert
         expect(success).to.equal(vocabulary.words.length);
-    });
+    }, 50000);
 
     it('Encodes entire corpus vocabulary', async function () {
-        this.timeout(50000);
-
         // Arrange
         const vocabulary = buildVocabulary();
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 128 });
@@ -135,5 +125,5 @@ describe('Vocabulary EncoderDecoder', async () => {
 
         // Assert
         expect(success).to.equal(vocabulary.words.length);
-    });
+    }, 50000);
 });

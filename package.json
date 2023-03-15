@@ -7,11 +7,7 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc --project tsconfig.json --outDir dist",
-        "testbench": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps dist/src/testbench.js",
-        "testbench:debug": "rm -rf dist/* && yarn run lint && yarn run build && node --enable-source-maps --inspect dist/testbench.js",
-        "test": "npm run build && npm run test-command",
-        "test-watch": "npm run test; chokidar 'src/**/*.ts' 'test/**/*.ts' -c 'npm run test'",
-        "test-command": "node --enable-source-maps --inspect ./node_modules/mocha/bin/mocha dist/test/**/*.js",
+        "test": "vitest",
         "lint": "eslint . --ext .ts",
         "purgeVocabulary": "rm -rf data/vocabulary.json",
         "purgeTrainingData": "rm -rf data/trainingData.json",

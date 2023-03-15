@@ -6,7 +6,8 @@ import {
     rateText,
     TEXT_RATER_OUTPUT_LEN,
 } from '../src/textRater';
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
+
 import {
     flatTextRaterData,
     validationData
@@ -14,8 +15,6 @@ import {
 
 describe('Text Rater', async () => {
     it('Rates text', async function () {
-        this.timeout(50000);
-
         // Arrange
         const encodingSize = 45;
         const text1 = 'Early computers were meant to be used only for calculations.';
@@ -60,5 +59,5 @@ describe('Text Rater', async () => {
                 console.log(`Validation data - success rate(class ${TEXT_RATER_OUTPUT[i]}): ${success}/${total} ${(success/total*100.0).toFixed(0)}%, expected: > ${expectedSuccessRate[i]} %`);
             }
         }
-    });
+    }, 50000);
 });

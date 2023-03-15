@@ -4,7 +4,7 @@ import * as tf from '@tensorflow/tfjs-node';
 import * as _ from 'lodash';
 import { buildEncoderDecoder } from './encoderDecoder';
 import { SymbolicTensor, Tensor } from '@tensorflow/tfjs-node';
-import * as json from 'big-json';
+import json from 'big-json';
 import LRU from 'lru-cache';
 
 export const CORPUS_PATH = "data/corpus";
@@ -481,7 +481,7 @@ export async function buildModel(
     let layerOutput: SymbolicTensor = inputs;
 
     const lstmTower = (towerOutput, inputs) => {
-        const unitsList = [128, 32, 32, 32, 128];
+        const unitsList = [32, 64, 32, 128, 512, 128];
 
         const stages = unitsList.map((units) => {
             const dense = () => {
@@ -531,15 +531,26 @@ export async function buildModel(
 
     layerOutput = lstmTower(layerOutput, inputs).towerOutput;
 
-    //layerOutput = tf.layers.timeDistributed({
-    //    layer:
-    //    tf.layers.dense({
-    //        units: 450,
-    //        activation: 'relu',
-    //        kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
-    //        biasInitializer: tf.initializers.constant({ value: -0.01 }),
-    //    })
-    //}).apply(layerOutput) as SymbolicTensor;
+    layerOutput = tf.layers.timeDistributed({
+        layer:
+        tf.layers.dense({
+            units: 450,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
+            biasInitializer: tf.initializers.constant({ value: -0.01 }),
+        })
+    }).apply(layerOutput) as SymbolicTensor;
+
+    layerOutput = tf.layers.timeDistributed({
+        layer:
+        tf.layers.dense({
+            units: 128,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.01, maxval: 0.01}),
+            biasInitializer: tf.initializers.constant({ value: -0.01 }),
+        })
+    }).apply(layerOutput) as SymbolicTensor;
+
 
     const outputLayer =
         tf.layers.timeDistributed({

@@ -5,7 +5,7 @@ import {
     buildVocabulary
 } from '../src/tinygpt';
 
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 
 describe('Metrics', async () => {
     it('Should calculate entropy', async () => {
