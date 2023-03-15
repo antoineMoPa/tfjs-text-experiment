@@ -1,3 +1,5 @@
+import { describe, it, expect} from 'vitest';
+
 import { LayersModel } from '@tensorflow/tfjs-node';
 import { readFileSync } from 'fs';
 
@@ -11,8 +13,6 @@ import {
     buildModelFromText,
     CORPUS_PATH
 } from '../src/tinygpt';
-
-import { expect } from 'chai';
 
 import { threeParagraphs, twoParagraphs } from './testText';
 
@@ -30,7 +30,6 @@ describe.only('Model', async () => {
     });
 
     it.skip('Should remember a simple word', async function () {
-        this.timeout(10000)
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -65,10 +64,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(word, 'The quick brown [?]').to.equal(' fox');
-    });
+    }, 10000);
 
     it('Should remember a simple sentence', async function () {
-        this.timeout(10000)
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -94,11 +92,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal(text + '[END]');
-    });
+    }, 10000);
 
     it('Should remember a more complex sentence', async function () {
-        this.timeout(10000);
-
         // Arrange
         const text = 'It belongs to the taxonomic family Equidae and is one of two extant subspecies of Equus ferus.';
         const vocabulary = buildVocabulary(text);
@@ -129,11 +125,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal(text + '[END]');
-    });
+    }, 10000);
 
     it('Should remember an even more complex sentence', async function () {
-        this.timeout(10000);
-
         // Arrange
         const text = 'The horse has evolved over the past 45 to 55 million years from a small multi-toed creature, Eohippus, into the large, single-toed animal of today';
         const {
@@ -162,11 +156,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal(text + '[END]');
-    });
+    }, 10000);
 
     it('Should remember a couple of sentences', async function() {
-        this.timeout(20000);
-
         // Arrange
         const text = 'Horses are adapted to run, allowing them to quickly escape predators, and possess an excellent sense of balance and a strong fight-or-flight response. Related to this need to flee from predators in the wild is an unusual trait: horses are able to sleep both standing up and lying down, with younger horses tending to sleep significantly more than adults.';
         const {
@@ -196,11 +188,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal(text + '[END]');
-    });
+    }, 20000);
 
     it('Should remember an entire paragraph', async function() {
-        this.timeout(20000);
-
         // Arrange
         const text = 'Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.';
 
@@ -231,10 +221,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal(text + '[END]');
-    });
+    }, 20000);
 
     it('Should remember 2 paragraphs', async function() {
-        this.timeout(100000);
         // Arrange
         const text = twoParagraphs;
 
@@ -265,11 +254,10 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal((text + '[END]'));
-    });
+    }, 100000);
 
 
     it('Should remember 3 paragraphs', async function() {
-        this.timeout(100000);
         // Arrange
         const text = threeParagraphs;
 
@@ -300,10 +288,9 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal((text + '[END]'));
-    });
+    }, 100000);
 
     it.skip('Should parse and entire article and output horse information.', async function() {
-        this.timeout(100000);
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
 
@@ -335,5 +322,5 @@ describe.only('Model', async () => {
 
         // Assert
         expect(sentence).to.equal((text + '[END]'));
-    });
+    }, 100000);
 });
