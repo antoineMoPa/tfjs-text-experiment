@@ -16,7 +16,7 @@ import {
 
 import { threeParagraphs, twoParagraphs } from './testText';
 
-describe.only('Model', async () => {
+describe('Model', async () => {
     it.skip('Should build a vocabulary', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';

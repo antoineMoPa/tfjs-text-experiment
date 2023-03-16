@@ -487,9 +487,8 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const lstmTower = (towerOutput, inputs) => {
-        const unitsList = [32, 64, 32, 128, 512, 128];
-
+    const lstmTower = (layerOutputs, inputs = layerOutputs, unitsList = [32, 32, 128, 32, 32, 32, 32]) => {
+        let towerOutput = layerOutputs;
         const stages = unitsList.map((units) => {
             const dense = () => {
                 towerOutput = tf.layers.timeDistributed({
@@ -541,24 +540,21 @@ export async function buildModel(
         tf.layers.dense({
             units: 128,
             activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1}),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
         })
     }).apply(layerOutput) as SymbolicTensor;
 
-    const tower1Input = (new SliceLayer({
-        sliceStart: [0,0,0],
-        sliceSize: [-1,2,64]
-    })).apply(layerOutput) as tf.SymbolicTensor;
-    const tower2Input = (new SliceLayer({
-        sliceStart: [0,0,64],
-        sliceSize: [-1,2,64]
-    })).apply(layerOutput) as tf.SymbolicTensor;
-
-    const tower1Output = lstmTower(tower1Input, tower1Input).towerOutput;
-    const tower2Output = lstmTower(tower2Input, tower2Input).towerOutput;
-
-    layerOutput = tf.layers.concatenate().apply([tower1Output, tower2Output]) as tf.SymbolicTensor;
+    layerOutput = tf.layers.concatenate().apply([
+        lstmTower((new SliceLayer({
+            sliceStart: [0,0,0],
+            sliceSize: [-1,2,64]
+        })).apply(layerOutput) as tf.SymbolicTensor/*, inputs*/).towerOutput,
+        lstmTower((new SliceLayer({
+            sliceStart: [0,0,64],
+            sliceSize: [-1,2,64]
+        })).apply(layerOutput) as tf.SymbolicTensor/*, inputs*/).towerOutput,
+    ]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
