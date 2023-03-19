@@ -513,28 +513,30 @@ export async function buildModel(
 
     //layerOutput = lstmTower(layerOutput).towerOutput,
 
+    const focusedLstmTower = ({ min, max  } : { min: number, max?: number}) => {
+        return lstmTower(
+            new FocusLayer({
+                min,
+                max,
+            }).apply(layerOutput) as tf.SymbolicTensor,
+            new FocusLayer({
+                min,
+                max,
+            }).apply(inputs) as tf.SymbolicTensor
+        ).towerOutput;
+    };
+
     layerOutput = tf.layers.concatenate().apply([
-        lstmTower((new FocusLayer({
-            min: 0,
-            max: 0,
-        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
-        lstmTower((new FocusLayer({
-            min: 0,
-            max: 3,
-        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
-        lstmTower((new FocusLayer({
-            min: 0,
-            max: 10,
-        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
-        lstmTower((new FocusLayer({
-            min: 0,
-        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
+        focusedLstmTower({ min: 0, max: 1 }),
+        focusedLstmTower({ min: 0, max: 4 }),
+        focusedLstmTower({ min: 0, max: 16 }),
+        focusedLstmTower({ min: 0 })
     ]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 450,
+            units: 256,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
