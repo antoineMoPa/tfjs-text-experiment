@@ -12,7 +12,7 @@ import { buildEncoderDecoder } from './encoderDecoder';
 import { SymbolicTensor, Tensor } from '@tensorflow/tfjs-node';
 import json from 'big-json';
 import LRU from 'lru-cache';
-import { FocusLayer } from './customLayers/focusLayer';
+import { focusedLstmTower } from './layerCombos/layerCombos';
 
 export const CORPUS_PATH = "data/corpus";
 
@@ -447,86 +447,6 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const lstmTower = ({
-        layerOutputs,
-        inputs = layerOutputs,
-        unitsList
-    }: {
-        layerOutputs: tf.SymbolicTensor;
-        inputs: tf.SymbolicTensor;
-        unitsList: number[];
-    }) => {
-        let towerOutput = layerOutputs;
-        let lastStage = null;
-        const stages = unitsList.map((units, index) => {
-
-            const dense = () => {
-                towerOutput = tf.layers.timeDistributed({
-                    layer: tf.layers.dense({
-                        units,
-                        activation: 'relu',
-                        kernelInitializer: tf.initializers.randomUniform({
-                            minval: -0.01,
-                            maxval: 0.01
-                        }),
-                        biasInitializer: tf.initializers.constant({ value: -0.01 }),
-                    })
-                }).apply(towerOutput) as SymbolicTensor;
-            };
-
-            dense();
-
-            const lstmOutput = tf.layers.lstm({
-                units,
-                activation: 'relu',
-                returnSequences: true,
-                kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.002,
-                    maxval: 0.002
-                }),
-                recurrentInitializer: tf.initializers.randomUniform({
-                    minval: -0.002,
-                    maxval: 0.002
-                }),
-                biasInitializer: tf.initializers.constant({ value: -0.01 }),
-                dropout: 0.01,
-                recurrentDropout: 0.01,
-            }).apply(towerOutput) as SymbolicTensor;
-
-            towerOutput = lstmOutput;
-
-            towerOutput = tf.layers.concatenate().apply([
-                inputs,
-                towerOutput,
-            ]) as SymbolicTensor;
-
-            lastStage = towerOutput;
-
-            return towerOutput;
-        });
-
-        return { towerOutput, stages };
-    }
-
-    const focusedLstmTower = (
-        { min, max, unitsList  } :
-        { min: number, max?: number, unitsList: number[] }
-    ) => {
-        return lstmTower({
-            layerOutputs: new FocusLayer({
-                min,
-                max,
-                maxTimeStep: beforeSize,
-                unitsList
-            }).apply(layerOutput) as tf.SymbolicTensor,
-            inputs: new FocusLayer({
-                min,
-                max,
-                maxTimeStep: beforeSize,
-            }).apply(inputs) as tf.SymbolicTensor,
-            unitsList
-        }).towerOutput;
-    };
 
     layerOutput = tf.layers.timeDistributed({
         layer:
@@ -541,10 +461,10 @@ export async function buildModel(
     const unitsList = [128, 256, 128];
 
     layerOutput = tf.layers.concatenate().apply([
-        focusedLstmTower({ min: 0, max:  1, unitsList}),
-        focusedLstmTower({ min: 0, max:  3, unitsList}),
-        focusedLstmTower({ min: 0, max:  4, unitsList}),
-        focusedLstmTower({ min: 0, unitsList}),
+        focusedLstmTower({ min: 0, max:  1, unitsList, beforeSize, layerOutput, inputs }),
+        focusedLstmTower({ min: 0, max:  3, unitsList, beforeSize, layerOutput, inputs }),
+        focusedLstmTower({ min: 0, max:  4, unitsList, beforeSize, layerOutput, inputs }),
+        focusedLstmTower({ min: 0, unitsList, beforeSize, layerOutput, inputs }),
     ]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
