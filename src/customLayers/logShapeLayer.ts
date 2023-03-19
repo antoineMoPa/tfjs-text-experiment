@@ -5,17 +5,13 @@ import * as tf from '@tensorflow/tfjs-node';
  * It passes the input through
  */
 export class LogShapeLayer extends tf.layers.Layer {
-    constructor(config) {
-        super(config);
+    constructor() {
+        super();
     }
 
     call(input) {
-        console.log(input.shape);
+        console.log(input.map(i => i.shape));
         return input;
-    }
-
-    getConfig() {
-        return super.getConfig();
     }
 
     static get className() {

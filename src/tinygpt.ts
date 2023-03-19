@@ -1,4 +1,10 @@
-import { readFileSync, existsSync, createWriteStream, createReadStream, readdirSync } from 'fs';
+import {
+    readFileSync,
+    existsSync,
+    createWriteStream,
+    createReadStream,
+    readdirSync
+} from 'fs';
 
 import * as tf from '@tensorflow/tfjs-node';
 import * as _ from 'lodash';
@@ -6,6 +12,7 @@ import { buildEncoderDecoder } from './encoderDecoder';
 import { SymbolicTensor, Tensor } from '@tensorflow/tfjs-node';
 import json from 'big-json';
 import LRU from 'lru-cache';
+import { FocusLayer } from './customLayers/focusLayer';
 
 export const CORPUS_PATH = "data/corpus";
 
@@ -487,20 +494,20 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const lstmTower = (layerOutputs, inputs = layerOutputs, unitsList = [32, 32, 128, 32, 32, 32, 32]) => {
+    const lstmTower = (layerOutputs, inputs = layerOutputs, unitsList = [128, 128]) => {
         let towerOutput = layerOutputs;
+
         const stages = unitsList.map((units) => {
             const dense = () => {
                 towerOutput = tf.layers.timeDistributed({
-                    layer:
-                    tf.layers.dense({
+                    layer: tf.layers.dense({
                         units,
                         activation: 'relu',
                         kernelInitializer: tf.initializers.randomUniform({
                             minval: -0.01,
                             maxval: 0.01
                         }),
-                        biasInitializer: tf.initializers.constant({value: -0.01}),
+                        biasInitializer: tf.initializers.constant({ value: -0.01 }),
                     })
                 }).apply(towerOutput) as SymbolicTensor;
             };
@@ -519,7 +526,7 @@ export async function buildModel(
                     minval: -0.002,
                     maxval: 0.002
                 }),
-                biasInitializer: tf.initializers.constant({value: -0.01}),
+                biasInitializer: tf.initializers.constant({ value: -0.01 }),
                 dropout: 0.05,
                 recurrentDropout: 0,
             }).apply(towerOutput) as SymbolicTensor;
@@ -532,28 +539,42 @@ export async function buildModel(
             return towerOutput;
         });
 
-        return { towerOutput, stages};
+        return { towerOutput, stages };
     }
 
     layerOutput = tf.layers.timeDistributed({
         layer:
-        tf.layers.dense({
-            units: 128,
-            activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1}),
-            biasInitializer: tf.initializers.constant({ value: -0.01 }),
-        })
+            tf.layers.dense({
+                units: 128,
+                activation: 'relu',
+                kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
+                biasInitializer: tf.initializers.constant({ value: -0.01 }),
+            })
     }).apply(layerOutput) as SymbolicTensor;
 
+    // layerOutput = new FocusLayer({
+    //     focus: 0,
+    //     focusSize: 5
+    // }).apply(layerOutput) as tf.SymbolicTensor;
+
+    //layerOutput = lstmTower(layerOutput).towerOutput,
+
     layerOutput = tf.layers.concatenate().apply([
-        lstmTower((new SliceLayer({
-            sliceStart: [0,0,0],
-            sliceSize: [-1,2,64]
-        })).apply(layerOutput) as tf.SymbolicTensor/*, inputs*/).towerOutput,
-        lstmTower((new SliceLayer({
-            sliceStart: [0,0,64],
-            sliceSize: [-1,2,64]
-        })).apply(layerOutput) as tf.SymbolicTensor/*, inputs*/).towerOutput,
+        lstmTower((new FocusLayer({
+            min: 0,
+            max: 0,
+        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
+        lstmTower((new FocusLayer({
+            min: 0,
+            max: 3,
+        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
+        lstmTower((new FocusLayer({
+            min: 0,
+            max: 10,
+        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
+        lstmTower((new FocusLayer({
+            min: 0,
+        })).apply(layerOutput) as tf.SymbolicTensor).towerOutput,
     ]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
@@ -561,7 +582,7 @@ export async function buildModel(
         tf.layers.dense({
             units: 450,
             activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2}),
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
         })
     }).apply(layerOutput) as SymbolicTensor;
