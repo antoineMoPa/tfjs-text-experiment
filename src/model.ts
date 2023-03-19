@@ -506,30 +506,25 @@ export async function buildModel(
             })
     }).apply(layerOutput) as SymbolicTensor;
 
-    // layerOutput = new FocusLayer({
-    //     focus: 0,
-    //     focusSize: 5
-    // }).apply(layerOutput) as tf.SymbolicTensor;
-
-    //layerOutput = lstmTower(layerOutput).towerOutput,
-
     const focusedLstmTower = ({ min, max  } : { min: number, max?: number}) => {
         return lstmTower(
             new FocusLayer({
                 min,
                 max,
+                maxTimeStep: beforeSize,
             }).apply(layerOutput) as tf.SymbolicTensor,
             new FocusLayer({
                 min,
                 max,
+                maxTimeStep: beforeSize,
             }).apply(inputs) as tf.SymbolicTensor
         ).towerOutput;
     };
 
     layerOutput = tf.layers.concatenate().apply([
         focusedLstmTower({ min: 0, max: 1 }),
-        focusedLstmTower({ min: 0, max: 4 }),
-        focusedLstmTower({ min: 0, max: 16 }),
+        focusedLstmTower({ min: 0, max: 2 }),
+        focusedLstmTower({ min: 0, max: 3 }),
         focusedLstmTower({ min: 0 })
     ]) as tf.SymbolicTensor;
 
