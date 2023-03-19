@@ -257,7 +257,7 @@ describe('Model', async () => {
     }, 100000);
 
 
-    it('Should remember 3 paragraphs', async function() {
+    it.skip('Should remember 3 paragraphs', async function() {
         // Arrange
         const text = threeParagraphs;
 

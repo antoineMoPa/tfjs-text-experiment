@@ -448,7 +448,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const lstmTower = (layerOutputs, inputs = layerOutputs, unitsList = [128, 128]) => {
+    const lstmTower = (layerOutputs, inputs = layerOutputs, unitsList = [128, 32, 128, 64, 128]) => {
         let towerOutput = layerOutputs;
 
         const stages = unitsList.map((units) => {
@@ -496,15 +496,15 @@ export async function buildModel(
         return { towerOutput, stages };
     }
 
-    layerOutput = tf.layers.timeDistributed({
-        layer:
-            tf.layers.dense({
-                units: 128,
-                activation: 'relu',
-                kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-                biasInitializer: tf.initializers.constant({ value: -0.01 }),
-            })
-    }).apply(layerOutput) as SymbolicTensor;
+    // layerOutput = tf.layers.timeDistributed({
+    //     layer:
+    //         tf.layers.dense({
+    //             units: 128,
+    //             activation: 'relu',
+    //             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
+    //             biasInitializer: tf.initializers.constant({ value: -0.01 }),
+    //         })
+    // }).apply(layerOutput) as SymbolicTensor;
 
     const focusedLstmTower = ({ min, max  } : { min: number, max?: number}) => {
         return lstmTower(
@@ -522,16 +522,20 @@ export async function buildModel(
     };
 
     layerOutput = tf.layers.concatenate().apply([
-        focusedLstmTower({ min: 0, max: 0 }),
+        tf.layers.multiply().apply([
+            focusedLstmTower({ min: 0, max: 0 }),
+            focusedLstmTower({ min: 0 })
+        ]) as tf.SymbolicTensor,
         focusedLstmTower({ min: 0, max: 2 }),
-        focusedLstmTower({ min: 0, max: 3 }),
-        focusedLstmTower({ min: 0 })
+        focusedLstmTower({ min: 0, max: 8 }),
+        focusedLstmTower({ min: 0, max: 16 }),
+        focusedLstmTower({ min: 0, max: 0 }),
     ]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 256,
+            units: 128,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
