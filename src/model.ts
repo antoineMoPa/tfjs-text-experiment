@@ -522,7 +522,7 @@ export async function buildModel(
     };
 
     layerOutput = tf.layers.concatenate().apply([
-        focusedLstmTower({ min: 0, max: 1 }),
+        focusedLstmTower({ min: 0, max: 0 }),
         focusedLstmTower({ min: 0, max: 2 }),
         focusedLstmTower({ min: 0, max: 3 }),
         focusedLstmTower({ min: 0 })
