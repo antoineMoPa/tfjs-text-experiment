@@ -1,8 +1,7 @@
 {
-    "name": "tinygpt",
+    "name": "tfjs-text-experiments",
     "version": "0.0.1",
-    "description": "A tiny completion model",
-    "main": "dist/tinygpt.js",
+    "description": "Tensorflow.js text experiments",
     "author": "antoineMoPa",
     "license": "MIT",
     "scripts": {

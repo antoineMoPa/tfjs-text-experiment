@@ -3,7 +3,7 @@ import {
 } from '../src/metrics/entropy';
 import {
     buildVocabulary
-} from '../src/tinygpt';
+} from '../src/model';
 
 import { describe, it, expect } from 'vitest';
 

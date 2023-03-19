@@ -1,7 +1,7 @@
 import type { Tensor2D } from '@tensorflow/tfjs-core/dist/tensor';
 import * as tf from '@tensorflow/tfjs-node';
 import { SymbolicTensor } from '@tensorflow/tfjs-node';
-import { Vocabulary, wordIndexToOneHot } from './tinygpt';
+import { Vocabulary, wordIndexToOneHot } from './model';
 
 export async function buildEncoderDecoder(
     {

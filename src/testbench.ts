@@ -16,7 +16,7 @@ tf.ready().then(() => {
 
             execSync('yarn run build');
 
-            const ENTRYPOINT = './tinygpt.js';
+            const ENTRYPOINT = './model.js';
             delete require.cache[require.resolve(ENTRYPOINT)];
             try {
                 // eslint-disable-next-line @typescript-eslint/no-var-requires

@@ -5,7 +5,7 @@ import {
     buildVocabulary,
     CORPUS_PATH,
     wordIndexToOneHot,
-} from '../src/tinygpt';
+} from '../src/model';
 
 import { buildEncoderDecoder } from '../src/encoderDecoder';
 import { describe, it, expect } from 'vitest';

@@ -1,4 +1,4 @@
-import { buildVocabulary } from '../src/tinygpt';
+import { buildVocabulary } from '../src/model';
 import { buildEncoderDecoder } from '../src/encoderDecoder';
 import {
     buildTextRater,

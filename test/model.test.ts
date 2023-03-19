@@ -12,7 +12,7 @@ import {
     predictUntilEnd,
     buildModelFromText,
     CORPUS_PATH
-} from '../src/tinygpt';
+} from '../src/model';
 
 import { threeParagraphs, twoParagraphs } from './testText';
 

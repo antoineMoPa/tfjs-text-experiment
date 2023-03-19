@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import {
     tokenize,
     CORPUS_PATH
-} from './tinygpt';
+} from './model';
 
 const getEmptyTextRaterData = () => {
     return {

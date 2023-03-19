@@ -1,6 +1,5 @@
-import { tokenize } from '../tinygpt';
+import { tokenize, Vocabulary } from '../model';
 import { sum } from 'lodash';
-import { Vocabulary } from '../tinygpt'
 
 type TokenProbabilities = {
     token: string;

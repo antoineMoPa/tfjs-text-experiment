@@ -5,7 +5,7 @@ import {
     Vocabulary,
     textToTensor,
     tokenize
-} from './tinygpt';
+} from './model';
 export const TEXT_RATER_INPUT_LENGTH = 8;
 
 // No output means that the text is good
