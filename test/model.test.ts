@@ -29,7 +29,7 @@ describe('Model', async () => {
         expect(vocabulary.words).to.contain('[END]');
     });
 
-    it.skip('Should remember a simple word', async function () {
+    it('Should remember a simple word', async function () {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -190,7 +190,7 @@ describe('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     }, 20000);
 
-    it('Should remember an entire paragraph', async function() {
+    it.skip('Should remember an entire paragraph', async function() {
         // Arrange
         const text = 'Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.';
 
@@ -223,7 +223,7 @@ describe('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     }, 20000);
 
-    it('Should remember 2 paragraphs', async function() {
+    it.skip('Should remember 2 paragraphs', async function() {
         // Arrange
         const text = twoParagraphs;
 

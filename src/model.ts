@@ -382,7 +382,6 @@ export function prepareModelInput({
             vocabulary,
             encoderLayer,
         });
-
         if (includeTimeStep) {
             const timeSteps = buildTimeStep(encodingSize, tokenIndices.length, timestepOffset);
 
@@ -448,10 +447,19 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const lstmTower = (layerOutputs, inputs = layerOutputs, unitsList = [128, 32, 128, 64, 128]) => {
+    const lstmTower = ({
+        layerOutputs,
+        inputs = layerOutputs,
+        unitsList
+    }: {
+        layerOutputs: tf.SymbolicTensor;
+        inputs: tf.SymbolicTensor;
+        unitsList: number[];
+    }) => {
         let towerOutput = layerOutputs;
+        let lastStage = null;
+        const stages = unitsList.map((units, index) => {
 
-        const stages = unitsList.map((units) => {
             const dense = () => {
                 towerOutput = tf.layers.timeDistributed({
                     layer: tf.layers.dense({
@@ -481,14 +489,18 @@ export async function buildModel(
                     maxval: 0.002
                 }),
                 biasInitializer: tf.initializers.constant({ value: -0.01 }),
-                dropout: 0.05,
-                recurrentDropout: 0,
+                dropout: 0.01,
+                recurrentDropout: 0.01,
             }).apply(towerOutput) as SymbolicTensor;
+
+            towerOutput = lstmOutput;
 
             towerOutput = tf.layers.concatenate().apply([
                 inputs,
-                lstmOutput,
+                towerOutput,
             ]) as SymbolicTensor;
+
+            lastStage = towerOutput;
 
             return towerOutput;
         });
@@ -496,46 +508,49 @@ export async function buildModel(
         return { towerOutput, stages };
     }
 
-    // layerOutput = tf.layers.timeDistributed({
-    //     layer:
-    //         tf.layers.dense({
-    //             units: 128,
-    //             activation: 'relu',
-    //             kernelInitializer: tf.initializers.randomUniform({ minval: -0.1, maxval: 0.1 }),
-    //             biasInitializer: tf.initializers.constant({ value: -0.01 }),
-    //         })
-    // }).apply(layerOutput) as SymbolicTensor;
-
-    const focusedLstmTower = ({ min, max  } : { min: number, max?: number}) => {
-        return lstmTower(
-            new FocusLayer({
+    const focusedLstmTower = (
+        { min, max, unitsList  } :
+        { min: number, max?: number, unitsList: number[] }
+    ) => {
+        return lstmTower({
+            layerOutputs: new FocusLayer({
                 min,
                 max,
                 maxTimeStep: beforeSize,
+                unitsList
             }).apply(layerOutput) as tf.SymbolicTensor,
-            new FocusLayer({
+            inputs: new FocusLayer({
                 min,
                 max,
                 maxTimeStep: beforeSize,
-            }).apply(inputs) as tf.SymbolicTensor
-        ).towerOutput;
+            }).apply(inputs) as tf.SymbolicTensor,
+            unitsList
+        }).towerOutput;
     };
 
+    layerOutput = tf.layers.timeDistributed({
+        layer:
+        tf.layers.dense({
+            units: 256,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({ minval: -0.002, maxval: 0.002 }),
+            biasInitializer: tf.initializers.constant({ value: -0.01 }),
+        })
+    }).apply(layerOutput) as SymbolicTensor;
+
+    const unitsList = [128, 256, 128];
+
     layerOutput = tf.layers.concatenate().apply([
-        tf.layers.multiply().apply([
-            focusedLstmTower({ min: 0, max: 0 }),
-            focusedLstmTower({ min: 0 })
-        ]) as tf.SymbolicTensor,
-        focusedLstmTower({ min: 0, max: 2 }),
-        focusedLstmTower({ min: 0, max: 8 }),
-        focusedLstmTower({ min: 0, max: 16 }),
-        focusedLstmTower({ min: 0, max: 0 }),
+        focusedLstmTower({ min: 0, max:  1, unitsList}),
+        focusedLstmTower({ min: 0, max:  3, unitsList}),
+        focusedLstmTower({ min: 0, max:  4, unitsList}),
+        focusedLstmTower({ min: 0, unitsList}),
     ]) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 128,
+            units: 450,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
@@ -637,8 +652,8 @@ type BuildModelFromTextArgs = {
 
 const LEVEL_TO_BEFORE_SIZE = {
     '0': 3,
-    '1': 5,
-    '2': 8,
+    '1': 10,
+    '2': 10,
 };
 
 export async function buildModelFromText({
