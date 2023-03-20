@@ -16,6 +16,10 @@ import { focusDenseTower } from './layerCombos/focusDenseTower';
 
 export const CORPUS_PATH = "data/corpus";
 
+type EmbeddingType = 'onehot' | 'embedding';
+
+const OUTPUT_FORMAT: EmbeddingType = 'onehot' as EmbeddingType;
+
 type WordIndexCache = LRU<string, tf.Tensor>;
 
 export const tokenize = (text: string) => {
@@ -475,9 +479,13 @@ export async function buildModel(
         })
     }).apply(layerOutput) as SymbolicTensor;
 
-    const outputLayer =
-        tf.layers.timeDistributed({
-            layer:
+
+    let outputLayer = null;
+
+    if (OUTPUT_FORMAT === 'embedding') {
+        outputLayer =
+            tf.layers.timeDistributed({
+                layer:
                 tf.layers.dense({
                     units: encodingSize,
                     activation: "relu",
@@ -488,14 +496,30 @@ export async function buildModel(
                     biasInitializer: tf.initializers.constant({ value: -0.01 }),
                     name: "output",
                 })
-        });
+            });
+    } else {
+        outputLayer =
+            tf.layers.timeDistributed({
+                layer:
+                tf.layers.dense({
+                    units: vocabulary.words.length,
+                    activation: "softmax",
+                    kernelInitializer: tf.initializers.randomUniform({
+                        minval: -0.08,
+                        maxval: 0.08
+                    }),
+                    biasInitializer: tf.initializers.constant({ value: -0.01 }),
+                    name: "output",
+                })
+            });
+    }
 
     layerOutput = outputLayer.apply(layerOutput) as SymbolicTensor;
 
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.0003;
+    const alpha = 0.002;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
@@ -525,7 +549,7 @@ export async function buildModel(
                     encoderLayer,
                     encodingSize,
                     timestepOffset: beforeSize,
-                    mode: 'embedding',
+                    mode: OUTPUT_FORMAT,
                     includeTimeStep: true
                 })
         );
@@ -683,11 +707,14 @@ export const predict = async (before, {
     })
 
     const stackedPredictionAndTimeStep = wordPredictModel.predict(tf.stack([input])) as Tensor;
-    const { word, token } = embeddingDecoder({ stackedPredictionAndTimeStep, vocabulary, decoderLayer })
 
     input.dispose();
 
-    return { word, token };
+    if (OUTPUT_FORMAT === 'embedding') {
+        return embeddingDecoder({ stackedPredictionAndTimeStep, vocabulary, decoderLayer })
+    } else {
+        return oneHotWithTimestepDecoder({ stackedPredictionAndTimeStep, vocabulary })
+    }
 }
 
 export const predictUntilEnd = async (inputText, {
