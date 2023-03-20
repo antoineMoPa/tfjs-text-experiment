@@ -451,10 +451,10 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [128, 256, 128];
+    const unitsList = [512, 512];
 
     layerOutput = tf.layers.concatenate().apply(
-        Array(20)
+        Array(3)
             .fill(1)
             .map(
                 (_, index) =>
@@ -472,7 +472,7 @@ export async function buildModel(
     layerOutput = tf.layers.timeDistributed({
         layer:
         tf.layers.dense({
-            units: 450,
+            units: 256,
             activation: 'relu',
             kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2 }),
             biasInitializer: tf.initializers.constant({ value: -0.01 }),
@@ -505,8 +505,8 @@ export async function buildModel(
                     units: vocabulary.words.length,
                     activation: "softmax",
                     kernelInitializer: tf.initializers.randomUniform({
-                        minval: -0.08,
-                        maxval: 0.08
+                        minval: -0.01,
+                        maxval: 0.01
                     }),
                     biasInitializer: tf.initializers.constant({ value: -0.01 }),
                     name: "output",
