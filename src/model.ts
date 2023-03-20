@@ -451,14 +451,14 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [128, 128, 128];
+    const unitsList = [512, 1024, 256];
 
-    const towers = Array(5)
+    const towers = Array(8)
             .fill(1)
             .map(
                 (_, index) =>
                     focusDenseTower({
-                        min: index,
+                        min: 0,
                         max: index,
                         unitsList,
                         beforeSize,
@@ -467,22 +467,8 @@ export async function buildModel(
                     })
             )
 
-    const towers2 = Array(5)
-        .fill(1)
-        .map(
-            (_, index) =>
-                focusDenseTower({
-                    min: 0,
-                    max: index,
-                    unitsList,
-                    beforeSize,
-                    layerOutput,
-                    inputs,
-                })
-        );
-
     layerOutput = tf.layers.concatenate().apply(
-        [...towers, ...towers2].map(t => t.towerOutput),
+        towers.map(t => t.towerOutput),
     ) as tf.SymbolicTensor;
 
     let outputLayer = null;
@@ -510,8 +496,8 @@ export async function buildModel(
                     units: vocabulary.words.length,
                     activation: "softmax",
                     kernelInitializer: tf.initializers.randomUniform({
-                        minval: -0.01,
-                        maxval: 0.01
+                        minval: -0.001,
+                        maxval: 0.001
                     }),
                     name: "output",
                 })
@@ -523,7 +509,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.002;
+    const alpha = 0.008;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),

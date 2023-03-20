@@ -19,24 +19,12 @@ export const denseTower = ({
                 units,
                 activation: 'relu',
                 kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.04,
-                    maxval: 0.04
+                    minval: -0.004,
+                    maxval: 0.004
                 }),
                 biasInitializer: tf.initializers.constant({ value: -0.02 }),
             })
         }).apply(towerOutput) as SymbolicTensor;
-
-        towerOutput =
-            tf.layers.dense({
-                units,
-                activation: 'relu',
-                kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.04,
-                    maxval: 0.04
-                }),
-                biasInitializer: tf.initializers.constant({ value: -0.02 }),
-            }).apply(towerOutput) as SymbolicTensor;
-
 
         towerOutput = tf.layers.concatenate().apply([
             inputs,
