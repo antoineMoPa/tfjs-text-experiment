@@ -56,7 +56,6 @@ describe('Text Rater', async () => {
 
             if (expectedSuccessRate[i]) {
                 expect(success/total).to.be.greaterThan(expectedSuccessRate[i]);
-                console.log(`Validation data - success rate(class ${TEXT_RATER_OUTPUT[i]}): ${success}/${total} ${(success/total*100.0).toFixed(0)}%, expected: > ${expectedSuccessRate[i]} %`);
             }
         }
     }, 50000);

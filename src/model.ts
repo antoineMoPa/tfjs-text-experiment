@@ -451,15 +451,14 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [512, 512];
+    const unitsList = [128, 128, 128];
 
-    layerOutput = tf.layers.concatenate().apply(
-        Array(3)
+    const towers = Array(5)
             .fill(1)
             .map(
                 (_, index) =>
                     focusDenseTower({
-                        min: 0,
+                        min: index,
                         max: index,
                         unitsList,
                         beforeSize,
@@ -467,18 +466,24 @@ export async function buildModel(
                         inputs,
                     })
             )
+
+    const towers2 = Array(5)
+        .fill(1)
+        .map(
+            (_, index) =>
+                focusDenseTower({
+                    min: 0,
+                    max: index,
+                    unitsList,
+                    beforeSize,
+                    layerOutput,
+                    inputs,
+                })
+        );
+
+    layerOutput = tf.layers.concatenate().apply(
+        [...towers, ...towers2].map(t => t.towerOutput),
     ) as tf.SymbolicTensor;
-
-    layerOutput = tf.layers.timeDistributed({
-        layer:
-        tf.layers.dense({
-            units: 256,
-            activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.2, maxval: 0.2 }),
-            biasInitializer: tf.initializers.constant({ value: -0.01 }),
-        })
-    }).apply(layerOutput) as SymbolicTensor;
-
 
     let outputLayer = null;
 
@@ -508,7 +513,6 @@ export async function buildModel(
                         minval: -0.01,
                         maxval: 0.01
                     }),
-                    biasInitializer: tf.initializers.constant({ value: -0.01 }),
                     name: "output",
                 })
             });
