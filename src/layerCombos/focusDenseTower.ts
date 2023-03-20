@@ -26,6 +26,8 @@ export const denseTower = ({
             })
         }).apply(towerOutput) as SymbolicTensor;
 
+        towerOutput = tf.layers.layerNormalization().apply(towerOutput) as SymbolicTensor;
+
         towerOutput = tf.layers.concatenate().apply([
             inputs,
             towerOutput,

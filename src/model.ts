@@ -451,7 +451,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [512, 1024, 256];
+    const unitsList = [32, 32];
 
     const towers = Array(8)
             .fill(1)
