@@ -12,7 +12,6 @@ export const lstmTower = ({
     unitsList: number[];
 }) => {
     let towerOutput = layerOutputs;
-    let lastStage = null;
     const stages = unitsList.map((units, index) => {
 
         const dense = () => {
@@ -54,8 +53,6 @@ export const lstmTower = ({
             inputs,
             towerOutput,
         ]) as SymbolicTensor;
-
-        lastStage = towerOutput;
 
         return towerOutput;
     });

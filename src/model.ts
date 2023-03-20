@@ -12,7 +12,7 @@ import { buildEncoderDecoder } from './encoderDecoder';
 import { SymbolicTensor, Tensor } from '@tensorflow/tfjs-node';
 import json from 'big-json';
 import LRU from 'lru-cache';
-import { focusedLstmTower } from './layerCombos/layerCombos';
+import { focusDenseTower } from './layerCombos/focusDenseTower';
 
 export const CORPUS_PATH = "data/corpus";
 
@@ -447,25 +447,23 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-
-    layerOutput = tf.layers.timeDistributed({
-        layer:
-        tf.layers.dense({
-            units: 256,
-            activation: 'relu',
-            kernelInitializer: tf.initializers.randomUniform({ minval: -0.002, maxval: 0.002 }),
-            biasInitializer: tf.initializers.constant({ value: -0.01 }),
-        })
-    }).apply(layerOutput) as SymbolicTensor;
-
     const unitsList = [128, 256, 128];
 
-    layerOutput = tf.layers.concatenate().apply([
-        focusedLstmTower({ min: 0, max:  1, unitsList, beforeSize, layerOutput, inputs }),
-        focusedLstmTower({ min: 0, max:  3, unitsList, beforeSize, layerOutput, inputs }),
-        focusedLstmTower({ min: 0, max:  4, unitsList, beforeSize, layerOutput, inputs }),
-        focusedLstmTower({ min: 0, unitsList, beforeSize, layerOutput, inputs }),
-    ]) as tf.SymbolicTensor;
+    layerOutput = tf.layers.concatenate().apply(
+        Array(20)
+            .fill(1)
+            .map(
+                (_, index) =>
+                    focusDenseTower({
+                        min: 0,
+                        max: index,
+                        unitsList,
+                        beforeSize,
+                        layerOutput,
+                        inputs,
+                    })
+            )
+    ) as tf.SymbolicTensor;
 
     layerOutput = tf.layers.timeDistributed({
         layer:
@@ -497,7 +495,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.005;
+    const alpha = 0.0003;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),

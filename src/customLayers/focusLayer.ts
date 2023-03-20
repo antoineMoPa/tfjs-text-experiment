@@ -19,7 +19,7 @@ export class FocusLayer extends tf.layers.Layer {
 
     call(input) {
         return tf.tidy(() => {
-            return tf.customGrad((input: tf.Tensor) => {
+            return tf.customGrad((input: tf.Tensor, save: any) => {
                 const shape = input.shape;
                 const timestep = input.slice([0,0,0], [shape[0], 1, shape[2]]);
                 const isFocus = tf.logicalAnd(
@@ -33,10 +33,11 @@ export class FocusLayer extends tf.layers.Layer {
                     ) || 1
                 );
                 const value = tf.mul(input, isFocus);
+                save([isFocus]);
 
                 return {
                     value: value,
-                    gradFunc: (x) => tf.zeros(x.shape),
+                    gradFunc: () => tf.ones(shape),
                 };
             })(input[0]);
         });
