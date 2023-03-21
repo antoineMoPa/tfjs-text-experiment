@@ -451,9 +451,9 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [32, 32];
+    const unitsList = [128, 128];
 
-    const towers = Array(8)
+    const towers = Array(10)
             .fill(1)
             .map(
                 (_, index) =>
@@ -464,6 +464,7 @@ export async function buildModel(
                         beforeSize,
                         layerOutput,
                         inputs,
+                        vocabulary,
                     })
             )
 
@@ -496,8 +497,8 @@ export async function buildModel(
                     units: vocabulary.words.length,
                     activation: "softmax",
                     kernelInitializer: tf.initializers.randomUniform({
-                        minval: -0.001,
-                        maxval: 0.001
+                        minval: -0.01,
+                        maxval: 0.01
                     }),
                     name: "output",
                 })
@@ -509,7 +510,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.008;
+    const alpha = 0.004;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),

@@ -1,19 +1,21 @@
 import * as tf from '@tensorflow/tfjs-node';
 import { SymbolicTensor } from '@tensorflow/tfjs-node';
 import { FocusLayer } from '../customLayers/focusLayer';
+import { Vocabulary } from '../model';
 
 export const denseTower = ({
     layerOutputs,
     inputs = layerOutputs,
-    unitsList
+    unitsList,
+    vocabulary
 }: {
     layerOutputs: tf.SymbolicTensor;
     inputs: tf.SymbolicTensor;
     unitsList: number[];
+    vocabulary: Vocabulary;
 }) => {
     let towerOutput = layerOutputs;
     const stages = unitsList.map((units) => {
-
         towerOutput = tf.layers.timeDistributed({
             layer: tf.layers.dense({
                 units,
@@ -22,16 +24,8 @@ export const denseTower = ({
                     minval: -0.004,
                     maxval: 0.004
                 }),
-                biasInitializer: tf.initializers.constant({ value: -0.02 }),
             })
         }).apply(towerOutput) as SymbolicTensor;
-
-        towerOutput = tf.layers.layerNormalization().apply(towerOutput) as SymbolicTensor;
-
-        towerOutput = tf.layers.concatenate().apply([
-            inputs,
-            towerOutput,
-        ]) as SymbolicTensor;
 
         return towerOutput;
     });
@@ -46,7 +40,8 @@ export const focusDenseTower = (
         unitsList,
         beforeSize,
         layerOutput,
-        inputs
+        inputs,
+        vocabulary,
     } :
     {
         min: number,
@@ -54,7 +49,8 @@ export const focusDenseTower = (
         unitsList: number[],
         beforeSize: number,
         layerOutput: tf.SymbolicTensor,
-        inputs: tf.SymbolicTensor
+        inputs: tf.SymbolicTensor;
+        vocabulary: Vocabulary;
     }
 ) => {
     return denseTower({
@@ -64,6 +60,7 @@ export const focusDenseTower = (
             max,
             maxTimeStep: beforeSize,
         }).apply(inputs) as tf.SymbolicTensor,
-        unitsList
+        unitsList,
+        vocabulary,
     });
 };
