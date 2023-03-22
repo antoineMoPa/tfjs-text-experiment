@@ -451,7 +451,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [128, 128];
+    const unitsList = [512, 256, 256];
 
     const towers = Array(10)
             .fill(1)
@@ -471,6 +471,18 @@ export async function buildModel(
     layerOutput = tf.layers.concatenate().apply(
         towers.map(t => t.towerOutput),
     ) as tf.SymbolicTensor;
+
+    layerOutput = tf.layers.timeDistributed({
+        layer: tf.layers.dense({
+            units: 400,
+            activation: 'relu',
+            kernelInitializer: tf.initializers.randomUniform({
+                minval: -0.5,
+                maxval: 0.5
+            }),
+            trainable: false,
+        })
+    }).apply(layerOutput) as SymbolicTensor;
 
     let outputLayer = null;
 
@@ -510,7 +522,7 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.004;
+    const alpha = 0.005;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
@@ -551,7 +563,7 @@ export async function buildModel(
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
             batchSize: 50,
-            verbose: encodingSize > 35 ? 1 : 0,
+            verbose: encodingSize >= 30 ? 1 : 0,
             shuffle: true
         });
 
