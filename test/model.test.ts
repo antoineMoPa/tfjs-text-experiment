@@ -372,7 +372,7 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 30
+            epochs: 45
         });
 
         // Act
@@ -389,7 +389,7 @@ describe('Model', async () => {
 
         // Assert
         expect(output).to.equal((text + '[END]'));
-    }, 400000);
+    }, 600000);
 
     it.skip('Should parse and entire article and output horse information.', async function() {
         // Arrange

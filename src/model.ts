@@ -669,7 +669,7 @@ export async function buildModelFromText({
         beforeSize,
         encodingSize,
         epochs,
-        minitestText: text.slice(0, 15)
+        minitestText: tokenize(text).slice(0, 15).join(' ')
     });
 
     return {
