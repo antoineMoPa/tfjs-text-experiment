@@ -14,7 +14,7 @@ import {
     CORPUS_PATH
 } from '../src/model';
 
-import { eightParagraphs, fourParagraphs, threeParagraphs, twoParagraphs } from './testText';
+import { _8Paragraphs, _4Paragraphs, _3Paragraphs, _2Paragraphs, _16Paragraphs } from './testText';
 
 describe('Model', async () => {
     it.skip('Should build a vocabulary', async () => {
@@ -145,7 +145,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("The horse has evolved over the past 45 to 55", {
+        const output = await predictUntilEnd("The horse has evolved over the past 45 to 55", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -155,7 +155,7 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + '[END]');
+        expect(output).to.equal(text + '[END]');
     }, 10000);
 
     it('Should remember a couple of sentences', async function() {
@@ -176,7 +176,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -187,7 +187,7 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + '[END]');
+        expect(output).to.equal(text + '[END]');
     }, 20000);
 
     it('Should remember an entire paragraph', async function() {
@@ -209,7 +209,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horses and humans interact in a wide variety of sport", {
+        const output = await predictUntilEnd("Horses and humans interact in a wide variety of sport", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -220,12 +220,12 @@ describe('Model', async () => {
         })
 
         // Assert
-        expect(sentence).to.equal(text + '[END]');
-    }, 20000);
+        expect(output).to.equal(text + '[END]');
+    }, 10000);
 
     it('Should remember 2 paragraphs', async function() {
         // Arrange
-        const text = twoParagraphs;
+        const text = _2Paragraphs;
 
         const {
             wordPredictModel,
@@ -243,7 +243,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horse breeds are loosely divided into three categories based on", {
+        const output = await predictUntilEnd("Horse breeds are loosely divided into three categories based on", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -253,13 +253,13 @@ describe('Model', async () => {
         });
 
         // Assert
-        expect(sentence).to.equal((text + '[END]'));
+        expect(output).to.equal((text + '[END]'));
     }, 100000);
 
 
-    it.skip('Should remember 3 paragraphs', async function() {
+    it('Should remember 3 paragraphs', async function() {
         // Arrange
-        const text = threeParagraphs;
+        const text = _3Paragraphs;
 
         const {
             wordPredictModel,
@@ -277,7 +277,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -287,12 +287,12 @@ describe('Model', async () => {
         });
 
         // Assert
-        expect(sentence).to.equal((text + '[END]'));
+        expect(output).to.equal((text + '[END]'));
     }, 100000);
 
     it('Should remember 4 paragraphs', async function() {
         // Arrange
-        const text = fourParagraphs;
+        const text = _4Paragraphs;
 
         const {
             wordPredictModel,
@@ -310,7 +310,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -320,12 +320,12 @@ describe('Model', async () => {
         });
 
         // Assert
-        expect(sentence).to.equal((text + '[END]'));
+        expect(output).to.equal((text + '[END]'));
     }, 100000);
 
     it('Should remember 8 paragraphs', async function() {
         // Arrange
-        const text = eightParagraphs;
+        const text = _8Paragraphs;
 
         const {
             wordPredictModel,
@@ -343,7 +343,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -353,10 +353,45 @@ describe('Model', async () => {
         });
 
         // Assert
-        expect(sentence).to.equal((text + '[END]'));
+        expect(output).to.equal((text + '[END]'));
     }, 100000);
 
-    it.only('Should parse and entire article and output horse information.', async function() {
+    it.only('Should remember 16 paragraphs', async function() {
+        // Arrange
+        const text = _16Paragraphs;
+
+        const {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            decoderLayer,
+            encodeWordIndexCache,
+        } = await buildModelFromText({
+            text,
+            verbose: true,
+            level: 1,
+            encodingSize: 50,
+            epochs: 30
+        });
+
+        // Act
+        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer, decoderLayer,
+            encodeWordIndexCache,
+            encodingSize: 50,
+        });
+
+        console.log(output);
+
+        // Assert
+        expect(output).to.equal((text + '[END]'));
+    }, 400000);
+
+    it.skip('Should parse and entire article and output horse information.', async function() {
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
 
@@ -376,7 +411,7 @@ describe('Model', async () => {
         });
 
         // Act
-        const sentence = await predictUntilEnd("Horse breeds are loosely divided into", {
+        const output = await predictUntilEnd("Horse breeds are loosely divided into", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -384,9 +419,9 @@ describe('Model', async () => {
             decoderLayer,
             encodeWordIndexCache,
             encodingSize: 100,
-        })
+        });
 
         // Assert
-        expect(sentence).to.equal((text + '[END]'));
+        expect(output).to.equal((text + '[END]'));
     }, 200000);
 });

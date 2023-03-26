@@ -300,6 +300,7 @@ type BuildModelArgs = {
     beforeSize: number,
     encodingSize?: number
     epochs?: number,
+    minitestText: string,
 };
 
 const encodeWordIndex = (
@@ -407,6 +408,27 @@ export function prepareModelInput({
     }
 }
 
+const minitest = async (inputText, {
+    vocabulary,
+    wordPredictModel,
+    beforeSize,
+    encoderLayer,
+    decoderLayer,
+    encodeWordIndexCache,
+    encodingSize
+}) => {
+    const output = await predictUntilEnd(inputText, {
+        vocabulary,
+        wordPredictModel,
+        beforeSize,
+        encoderLayer,
+        decoderLayer,
+        encodeWordIndexCache,
+        encodingSize
+    });
+    console.log(`minitest: ${output}`)
+};
+
 /**
  * buildModel
  *
@@ -427,6 +449,7 @@ export async function buildModel(
         beforeSize,
         encodingSize = 128,
         epochs = 60,
+        minitestText,
     }: BuildModelArgs
 ): Promise<{
     wordPredictModel: tf.LayersModel;
@@ -454,9 +477,9 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = Array(3).fill(200);
+    const unitsList = Array(4).fill(220);
 
-    const towers = Array(10)
+    const towers = Array(14)
             .fill(1)
             .map(
                 (_, index) =>
@@ -564,9 +587,24 @@ export async function buildModel(
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
-            batchSize: 50,
+            batchSize: 80,
             verbose: encodingSize >= 30 ? 1 : 0,
-            shuffle: true
+            shuffle: true,
+            callbacks: {
+                onEpochEnd: async (epoch, logs) => {
+                    if (verbose && epoch % 10 === 0) {
+                        await minitest(minitestText, {
+                            vocabulary,
+                            wordPredictModel,
+                            beforeSize,
+                            encoderLayer,
+                            decoderLayer,
+                            encodeWordIndexCache,
+                            encodingSize
+                        });
+                    }
+                },
+            },
         });
 
         [
@@ -631,6 +669,7 @@ export async function buildModelFromText({
         beforeSize,
         encodingSize,
         epochs,
+        minitestText: text.slice(0, 15)
     });
 
     return {
