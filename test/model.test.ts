@@ -14,7 +14,7 @@ import {
     CORPUS_PATH
 } from '../src/model';
 
-import { threeParagraphs, twoParagraphs } from './testText';
+import { eightParagraphs, fourParagraphs, threeParagraphs, twoParagraphs } from './testText';
 
 describe('Model', async () => {
     it.skip('Should build a vocabulary', async () => {
@@ -290,7 +290,73 @@ describe('Model', async () => {
         expect(sentence).to.equal((text + '[END]'));
     }, 100000);
 
-    it.skip('Should parse and entire article and output horse information.', async function() {
+    it('Should remember 4 paragraphs', async function() {
+        // Arrange
+        const text = fourParagraphs;
+
+        const {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            decoderLayer,
+            encodeWordIndexCache,
+        } = await buildModelFromText({
+            text,
+            verbose: true,
+            level: 1,
+            encodingSize: 50,
+            epochs: 45
+        });
+
+        // Act
+        const sentence = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer, decoderLayer,
+            encodeWordIndexCache,
+            encodingSize: 50,
+        });
+
+        // Assert
+        expect(sentence).to.equal((text + '[END]'));
+    }, 100000);
+
+    it('Should remember 8 paragraphs', async function() {
+        // Arrange
+        const text = eightParagraphs;
+
+        const {
+            wordPredictModel,
+            vocabulary,
+            beforeSize,
+            encoderLayer,
+            decoderLayer,
+            encodeWordIndexCache,
+        } = await buildModelFromText({
+            text,
+            verbose: true,
+            level: 1,
+            encodingSize: 50,
+            epochs: 45
+        });
+
+        // Act
+        const sentence = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer, decoderLayer,
+            encodeWordIndexCache,
+            encodingSize: 50,
+        });
+
+        // Assert
+        expect(sentence).to.equal((text + '[END]'));
+    }, 100000);
+
+    it.only('Should parse and entire article and output horse information.', async function() {
         // Arrange
         const text = readFileSync(CORPUS_PATH + '/wiki-horse.txt').toString();
 
@@ -305,7 +371,7 @@ describe('Model', async () => {
             text,
             verbose: true,
             level: 2,
-            encodingSize: 128,
+            encodingSize: 100,
             epochs: 4
         });
 
@@ -317,10 +383,10 @@ describe('Model', async () => {
             encoderLayer,
             decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 128,
+            encodingSize: 100,
         })
 
         // Assert
         expect(sentence).to.equal((text + '[END]'));
-    }, 100000);
+    }, 200000);
 });

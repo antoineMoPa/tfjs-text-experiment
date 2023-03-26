@@ -454,7 +454,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [128, 128, 128];
+    const unitsList = Array(3).fill(200);
 
     const towers = Array(10)
             .fill(1)
@@ -733,7 +733,7 @@ export const predictUntilEnd = async (inputText, {
 }) => {
     // Test model
     const words = tokenize(inputText);
-    const MAX = 200;
+    const MAX = 1000;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
         const { word } = await predict(words.slice(-beforeSize), {
