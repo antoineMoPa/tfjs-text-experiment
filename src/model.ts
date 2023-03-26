@@ -103,7 +103,10 @@ export function buildVocabulary(...texts: string[]): Vocabulary {
     }
     tokens.push('[END]');
     tokens.push('[NULL]');
-    const words: string[] = _.shuffle(_.uniq(tokens));
+    let words: string[] = _.shuffle(_.uniq(tokens));
+
+    // Add null words to increase output space
+    words = [...words, ...Array(10).fill(null).map(() => '[nullword' + Math.random() + ']')];
 
     return { words };
 }
@@ -451,7 +454,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = [512, 256, 256];
+    const unitsList = [128, 128, 128];
 
     const towers = Array(10)
             .fill(1)
@@ -497,7 +500,6 @@ export async function buildModel(
                         minval: -0.08,
                         maxval: 0.08
                     }),
-                    biasInitializer: tf.initializers.constant({ value: -0.01 }),
                     name: "output",
                 })
             });
@@ -509,8 +511,8 @@ export async function buildModel(
                     units: vocabulary.words.length,
                     activation: "softmax",
                     kernelInitializer: tf.initializers.randomUniform({
-                        minval: -0.01,
-                        maxval: 0.01
+                        minval: -0.02,
+                        maxval: 0.02
                     }),
                     name: "output",
                 })
@@ -522,11 +524,11 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.005;
+    const alpha = 0.003;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
-        loss: 'meanSquaredError',
+        loss: 'categoricalCrossentropy',
     })
 
     const { encoderLayer, decoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });

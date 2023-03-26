@@ -223,7 +223,7 @@ describe('Model', async () => {
         expect(sentence).to.equal(text + '[END]');
     }, 20000);
 
-    it.skip('Should remember 2 paragraphs', async function() {
+    it('Should remember 2 paragraphs', async function() {
         // Arrange
         const text = twoParagraphs;
 

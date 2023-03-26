@@ -29,15 +29,18 @@ export const denseTower = ({
 
         towerOutput = tf.layers.timeDistributed({
             layer: tf.layers.dense({
-                units: 64,
+                units: inputs.shape[2],
                 activation: 'relu',
                 kernelInitializer: tf.initializers.randomUniform({
-                    minval: -0.5,
-                    maxval: 0.5
+                    minval: -0.4,
+                    maxval: 0.4
                 }),
                 trainable: false,
             })
         }).apply(towerOutput) as SymbolicTensor;
+
+        towerOutput = tf.layers.multiply()
+            .apply([towerOutput, inputs]) as SymbolicTensor;
 
         return towerOutput;
     });
