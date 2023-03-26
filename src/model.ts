@@ -477,7 +477,7 @@ export async function buildModel(
 
     let layerOutput: SymbolicTensor = inputs;
 
-    const unitsList = Array(4).fill(260);
+    const unitsList = Array(4).fill(220);
 
     const towers = Array(14)
             .fill(1)
@@ -587,7 +587,7 @@ export async function buildModel(
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
-            batchSize: 80,
+            batchSize: 50,
             verbose: encodingSize >= 30 ? 1 : 0,
             shuffle: true,
             callbacks: {
