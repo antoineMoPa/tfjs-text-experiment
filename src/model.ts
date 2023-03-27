@@ -134,7 +134,7 @@ export function textToTensor(text: string, {
     maxLength?: number
 }) {
     const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
-        max: 10,
+        max: 1000,
         dispose(value: tf.Tensor) {
             value.dispose();
         }
@@ -172,7 +172,7 @@ export function tokenIndicesToTensor(tokenIndices: number[], {
     encoderLayer: tf.layers.Layer,
 }) {
     const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
-        max: 10,
+        max: 1000,
         dispose(value: tf.Tensor) {
             value.dispose();
         }
@@ -300,7 +300,7 @@ type BuildModelArgs = {
     beforeSize: number,
     encodingSize?: number
     epochs?: number,
-    minitestText: string,
+    minitestText?: string,
 };
 
 const encodeWordIndex = (
@@ -390,6 +390,7 @@ export function prepareModelInput({
             vocabulary,
             encoderLayer,
         });
+
         if (includeTimeStep) {
             const timeSteps = buildTimeStep(encodingSize, tokenIndices.length, timestepOffset);
 
@@ -448,7 +449,7 @@ export async function buildModel(
         level,
         beforeSize,
         encodingSize = 128,
-        epochs = 60,
+        epochs = 25,
         minitestText,
     }: BuildModelArgs
 ): Promise<{
@@ -479,7 +480,7 @@ export async function buildModel(
 
     const unitsList = Array(4).fill(220);
 
-    const towers = Array(14)
+    const towers = Array(beforeSize)
             .fill(1)
             .map(
                 (_, index) =>
@@ -557,6 +558,7 @@ export async function buildModel(
     const { encoderLayer, decoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
 
     const trainOnBatch = async (inputs, outputs) => {
+
         const trainingInputs = inputs.map(
             tokenIndices =>
                 prepareModelInput({
@@ -569,6 +571,8 @@ export async function buildModel(
                     includeTimeStep: true
                 })
         );
+
+
         const trainingOutputs = outputs.map(
             tokenIndices =>
                 prepareModelInput({
@@ -585,6 +589,7 @@ export async function buildModel(
         const concatenatedInput = tf.stack(trainingInputs);
         const concatenatedOutput = tf.stack(trainingOutputs);
 
+
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
             batchSize: 50,
@@ -592,7 +597,7 @@ export async function buildModel(
             shuffle: true,
             callbacks: {
                 onEpochEnd: async (epoch, logs) => {
-                    if (verbose && epoch % 10 === 0) {
+                    if (minitestText && verbose && epoch % 10 === 8) {
                         await minitest(minitestText, {
                             vocabulary,
                             wordPredictModel,
@@ -628,17 +633,12 @@ export async function buildModel(
 }
 
 type BuildModelFromTextArgs = {
-    text?: string,
-    verbose?: boolean,
-    level?: number,
-    encodingSize?: number,
-    epochs?: number
-};
-
-const LEVEL_TO_BEFORE_SIZE = {
-    '0': 3,
-    '1': 10,
-    '2': 10,
+    text?: string;
+    verbose?: boolean;
+    level?: number;
+    encodingSize?: number;
+    epochs?: number;
+    beforeSize?: number;
 };
 
 export async function buildModelFromText({
@@ -646,16 +646,20 @@ export async function buildModelFromText({
     verbose,
     level,
     encodingSize,
-    epochs
+    epochs,
+    beforeSize
 }: BuildModelFromTextArgs) {
-    const beforeSize: number = LEVEL_TO_BEFORE_SIZE[level];
+    const LEVEL_TO_BEFORE_SIZE = {
+        '0': 3,
+        '1': 30,
+    };
+    beforeSize = beforeSize || LEVEL_TO_BEFORE_SIZE[level];
     const vocabulary = buildVocabulary(text);
     const trainingData = await buildTrainingData({
         vocabulary,
         text,
         beforeSize,
     });
-
     const {
         wordPredictModel,
         encoderLayer,
@@ -669,7 +673,7 @@ export async function buildModelFromText({
         beforeSize,
         encodingSize,
         epochs,
-        minitestText: tokenize(text).slice(0, 15).join(' ')
+        minitestText: tokenize(text).slice(0, beforeSize).join(' ')
     });
 
     return {
@@ -728,7 +732,6 @@ export const predict = async (before, {
     encodeWordIndexCache: WordIndexCache
     encodingSize: number,
 }) => {
-
     if (before.length < beforeSize) {
         console.error(`Before is not long enough. Got ${before.length}, expected ${beforeSize}. We'll pad the input with [NULL]`);
 
@@ -738,7 +741,6 @@ export const predict = async (before, {
     }
 
     const tokenIndices = await words2Input(before.slice(-beforeSize), vocabulary);
-
     const input = prepareModelInput({
         tokenIndices,
         vocabulary,
@@ -799,6 +801,8 @@ export const main = async () => {
         vocabulary,
         beforeSize
     });
+    const originalString = "the quick brown";
+
     const {
         wordPredictModel,
         encoderLayer,
@@ -810,10 +814,10 @@ export const main = async () => {
         beforeSize,
         level: 0,
         verbose: true,
+        minitestText: originalString
     });
 
     // Test model
-    const originalString = "the quick brown";
     const result = await predictUntilEnd(originalString, {
         vocabulary,
         wordPredictModel,

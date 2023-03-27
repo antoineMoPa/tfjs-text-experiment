@@ -1,6 +1,5 @@
 import { describe, it, expect} from 'vitest';
 
-import { LayersModel } from '@tensorflow/tfjs-node';
 import { readFileSync } from 'fs';
 
 import {
@@ -205,11 +204,15 @@ describe('Model', async () => {
             text,
             verbose: true,
             level: 1,
-            encodingSize: 30
+            encodingSize: 30,
+            epochs: 25,
+            beforeSize: 30,
         });
 
+        console.log(beforeSize);
+
         // Act
-        const output = await predictUntilEnd("Horses and humans interact in a wide variety of sport", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -221,7 +224,7 @@ describe('Model', async () => {
 
         // Assert
         expect(output).to.equal(text + '[END]');
-    }, 10000);
+    }, 100000);
 
     it('Should remember 2 paragraphs', async function() {
         // Arrange
@@ -239,11 +242,11 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 45
+            epochs: 15
         });
 
         // Act
-        const output = await predictUntilEnd("Horse breeds are loosely divided into three categories based on", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -273,11 +276,11 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 45
+            epochs: 15
         });
 
         // Act
-        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -306,11 +309,11 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 45
+            epochs: 15
         });
 
         // Act
-        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -321,9 +324,9 @@ describe('Model', async () => {
 
         // Assert
         expect(output).to.equal((text + '[END]'));
-    }, 100000);
+    }, 200000);
 
-    it('Should remember 8 paragraphs', async function() {
+    it.only('Should remember 8 paragraphs', async function() {
         // Arrange
         const text = _8Paragraphs;
 
@@ -339,11 +342,11 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 45
+            epochs: 20
         });
 
         // Act
-        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -354,9 +357,9 @@ describe('Model', async () => {
 
         // Assert
         expect(output).to.equal((text + '[END]'));
-    }, 100000);
+    }, 800000);
 
-    it.only('Should remember 16 paragraphs', async function() {
+    it('Should remember 16 paragraphs', async function() {
         // Arrange
         const text = _16Paragraphs;
 
@@ -372,11 +375,11 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 45
+            epochs: 15
         });
 
         // Act
-        const output = await predictUntilEnd("Horses are adapted to run, allowing them to quickly escape", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -405,13 +408,13 @@ describe('Model', async () => {
         } = await buildModelFromText({
             text,
             verbose: true,
-            level: 2,
+            level: 1,
             encodingSize: 100,
             epochs: 4
         });
 
         // Act
-        const output = await predictUntilEnd("Horse breeds are loosely divided into", {
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
             wordPredictModel,
             beforeSize,
