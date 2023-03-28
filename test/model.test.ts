@@ -10,7 +10,9 @@ import {
     predict,
     predictUntilEnd,
     buildModelFromText,
-    CORPUS_PATH
+    CORPUS_PATH,
+    serializeModel,
+    loadModel
 } from '../src/model';
 
 import { _8Paragraphs, _4Paragraphs, _3Paragraphs, _2Paragraphs, _16Paragraphs } from './testText';
@@ -28,7 +30,7 @@ describe('Model', async () => {
         expect(vocabulary.words).to.contain('[END]');
     });
 
-    it('Should remember a simple word', async function () {
+    it.only('Should remember a simple word', async function () {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -45,7 +47,8 @@ describe('Model', async () => {
             trainingData,
             verbose: false,
             beforeSize,
-            encodingSize: 7
+            encodingSize: 7,
+            epochs: 25,
         });
 
         // Act
@@ -58,6 +61,63 @@ describe('Model', async () => {
                 encoderLayer, decoderLayer,
                 encodeWordIndexCache,
                 encodingSize: 7,
+            }
+        );
+
+        // Assert
+        expect(word, 'The quick brown [?]').to.equal(' fox');
+    }, 10000);
+
+    it.only('Should save a model', async function () {
+        // Arrange
+        const text = 'the quick brown fox jumps over the lazy dog';
+        const vocabulary = buildVocabulary(text);
+        const beforeSize = 3;
+        const trainingData = await buildTrainingData({ vocabulary, text, beforeSize });
+        const encodingSize = 7;
+        const {
+            wordPredictModel,
+            encoderDecoder
+        } = await buildModel({
+            vocabulary,
+            trainingData,
+            verbose: false,
+            beforeSize,
+            encodingSize
+        });
+
+        await serializeModel('theQuickBrownFox', {
+            wordPredictModel,
+            encoderDecoder,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+        });
+    }, 10000);
+
+    it.only('Should load a model', async function () {
+        // Arrange
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+        } = await loadModel('theQuickBrownFox', );
+
+        // Act
+        const { word } = await predict(
+            tokenize("the quick brown"),
+            {
+                wordPredictModel,
+                vocabulary,
+                beforeSize,
+                encoderLayer,
+                decoderLayer,
+                encodeWordIndexCache,
+                encodingSize,
             }
         );
 
@@ -359,7 +419,7 @@ describe('Model', async () => {
         expect(output).to.equal((text + '[END]'));
     }, 800000);
 
-    it.only('Should remember 16 paragraphs', async function() {
+    it('Should remember 16 paragraphs', async function() {
         // Arrange
         const text = _16Paragraphs;
 
@@ -375,7 +435,7 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 20
+            epochs: 5
         });
 
         // Act
@@ -387,8 +447,6 @@ describe('Model', async () => {
             encodeWordIndexCache,
             encodingSize: 50,
         });
-
-        console.log(output);
 
         // Assert
         expect(output).to.equal((text + '[END]'));

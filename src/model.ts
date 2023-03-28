@@ -3,6 +3,7 @@ import {
     existsSync,
     createWriteStream,
     createReadStream,
+    writeFileSync,
     readdirSync
 } from 'fs';
 
@@ -430,6 +431,75 @@ const minitest = async (inputText, {
     console.log(`minitest: ${output}`)
 };
 
+export const serializeModel = async (name: string, {
+    wordPredictModel,
+    encoderDecoder,
+    vocabulary,
+    beforeSize,
+    encodingSize,
+} : {
+    wordPredictModel: tf.LayersModel;
+    encoderDecoder: tf.LayersModel;
+    vocabulary: Vocabulary;
+    beforeSize: number;
+    encodingSize: number
+}) => {
+    await wordPredictModel.save(`file://${process.cwd()}/models/${name}_wordPredictModel`);
+    await encoderDecoder.save(`file://${process.cwd()}/models/${name}_encoderDecoder`);
+
+    const data = {
+        vocabulary,
+        beforeSize,
+        encodingSize,
+    };
+
+    writeFileSync(`${process.cwd()}/models/${name}_data.json`, JSON.stringify(data), { encoding: 'utf8' });
+};
+
+export const loadModel = async (name: string) : Promise<{
+    wordPredictModel: tf.LayersModel;
+    encoderDecoder: tf.LayersModel;
+    encoderLayer: tf.layers.Layer;
+    decoderLayer: tf.layers.Layer;
+    vocabulary: Vocabulary;
+    beforeSize: number;
+    encodingSize: number;
+    encodeWordIndexCache: WordIndexCache;
+}> => {
+    const wordPredictModel = await tf.loadLayersModel(`file://${process.cwd()}/models/${name}_wordPredictModel/model.json`);
+    const encoderDecoder = await tf.loadLayersModel(`file://${process.cwd()}/models/${name}_encoderDecoder/model.json`);
+
+    const {
+        vocabulary,
+        beforeSize,
+        encodingSize,
+    } = JSON.parse(readFileSync(`${process.cwd()}/models/${name}_data.json`, { encoding: 'utf8' }));
+
+    const encoderLayer = encoderDecoder.getLayer('encodedLayer');
+    const decoderLayer = encoderDecoder.getLayer('decodedLayer');
+    const encodeWordIndexCache = genCache();
+
+    return {
+        wordPredictModel,
+        encoderDecoder,
+        encoderLayer,
+        decoderLayer,
+        vocabulary,
+        beforeSize,
+        encodingSize,
+        encodeWordIndexCache
+    };
+};
+
+const genCache = () =>
+    new LRU<string, tf.Tensor2D>({
+        max: 1000,
+        dispose(value: tf.Tensor) {
+            value.dispose();
+        }
+    });
+
+
 /**
  * buildModel
  *
@@ -457,13 +527,9 @@ export async function buildModel(
     encoderLayer: tf.layers.Layer;
     decoderLayer: tf.layers.Layer;
     encodeWordIndexCache: WordIndexCache;
+    encoderDecoder: tf.LayersModel,
 }> {
-    const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
-        max: 1000,
-        dispose(value: tf.Tensor) {
-            value.dispose();
-        }
-    })
+    const encodeWordIndexCache = genCache();
 
     if (verbose === undefined) {
         verbose = true;
@@ -548,14 +614,14 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.003;
+    const alpha = 0.05;
 
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
         loss: 'categoricalCrossentropy',
     })
 
-    const { encoderLayer, decoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
+    const { encoderDecoder, encoderLayer, decoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
 
     const trainOnBatch = async (inputs, outputs) => {
 
@@ -628,7 +694,8 @@ export async function buildModel(
         wordPredictModel,
         encoderLayer,
         decoderLayer,
-        encodeWordIndexCache
+        encodeWordIndexCache,
+        encoderDecoder
     };
 }
 
@@ -698,7 +765,7 @@ const oneHotWithTimestepDecoder = ({ stackedPredictionAndTimeStep, vocabulary })
     prediction.dispose();
 
     return { word, token };
-s}
+}
 
 const embeddingDecoder = ({ stackedPredictionAndTimeStep, vocabulary, decoderLayer }) => {
     const predictionAndTimeStep = tf.unstack(stackedPredictionAndTimeStep)[0];

@@ -30,7 +30,7 @@ export async function buildEncoderDecoder(
         units: vocabulary.words.length,
         activation: "softmax",
         kernelInitializer: tf.initializers.randomNormal({}),
-        name: "output",
+        name: "decodedLayer",
     });
 
     const outputs = decoderLayer.apply(encodedLayerOutput) as SymbolicTensor;

@@ -6,3 +6,4 @@ data/data-corpus.txt
 data/trainingData.json
 data/vocabulary.json
 data/corpus
+models/**
