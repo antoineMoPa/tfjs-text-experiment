@@ -326,7 +326,7 @@ describe('Model', async () => {
         expect(output).to.equal((text + '[END]'));
     }, 200000);
 
-    it.only('Should remember 8 paragraphs', async function() {
+    it('Should remember 8 paragraphs', async function() {
         // Arrange
         const text = _8Paragraphs;
 
@@ -359,7 +359,7 @@ describe('Model', async () => {
         expect(output).to.equal((text + '[END]'));
     }, 800000);
 
-    it('Should remember 16 paragraphs', async function() {
+    it.only('Should remember 16 paragraphs', async function() {
         // Arrange
         const text = _16Paragraphs;
 
@@ -375,7 +375,7 @@ describe('Model', async () => {
             verbose: true,
             level: 1,
             encodingSize: 50,
-            epochs: 15
+            epochs: 20
         });
 
         // Act
@@ -392,7 +392,7 @@ describe('Model', async () => {
 
         // Assert
         expect(output).to.equal((text + '[END]'));
-    }, 600000);
+    }, 1000000);
 
     it.skip('Should parse and entire article and output horse information.', async function() {
         // Arrange

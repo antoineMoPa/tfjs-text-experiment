@@ -698,7 +698,7 @@ const oneHotWithTimestepDecoder = ({ stackedPredictionAndTimeStep, vocabulary })
     prediction.dispose();
 
     return { word, token };
-}
+s}
 
 const embeddingDecoder = ({ stackedPredictionAndTimeStep, vocabulary, decoderLayer }) => {
     const predictionAndTimeStep = tf.unstack(stackedPredictionAndTimeStep)[0];
@@ -774,7 +774,7 @@ export const predictUntilEnd = async (inputText, {
 }) => {
     // Test model
     const words = tokenize(inputText);
-    const MAX = 1000;
+    const MAX = 5000;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
         const { word } = await predict(words.slice(-beforeSize), {
