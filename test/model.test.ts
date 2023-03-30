@@ -12,7 +12,8 @@ import {
     buildModelFromText,
     CORPUS_PATH,
     serializeModel,
-    loadModel
+    loadModel,
+    trainModelWithText
 } from '../src/model';
 
 import { _8Paragraphs, _4Paragraphs, _3Paragraphs, _2Paragraphs, _16Paragraphs } from './testText';
@@ -72,9 +73,10 @@ describe('Model', async () => {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
-        const beforeSize = 3;
+        const beforeSize = 2;
         const trainingData = await buildTrainingData({ vocabulary, text, beforeSize });
         const encodingSize = 7;
+
         const {
             wordPredictModel,
             encoderDecoder
@@ -83,7 +85,8 @@ describe('Model', async () => {
             trainingData,
             verbose: false,
             beforeSize,
-            encodingSize
+            encodingSize,
+            epochs: 30,
         });
 
         await serializeModel('theQuickBrownFox', {
@@ -105,7 +108,7 @@ describe('Model', async () => {
             beforeSize,
             encodingSize,
             encodeWordIndexCache,
-        } = await loadModel('theQuickBrownFox', );
+        } = await loadModel('theQuickBrownFox');
 
         // Act
         const { word } = await predict(
@@ -124,6 +127,51 @@ describe('Model', async () => {
         // Assert
         expect(word, 'The quick brown [?]').to.equal(' fox');
     }, 10000);
+
+    it.only('Should fit a model on new data', async function () {
+        // Arrange
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+        } = await loadModel('theQuickBrownFox');
+
+        // Act
+        await trainModelWithText({
+            text: 'the quick brown dog jumps over the lazy fox',
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 20,
+            alpha: 0.005,
+        });
+
+        const { word } = await predict(
+            tokenize("the quick brown"),
+            {
+                wordPredictModel,
+                vocabulary,
+                beforeSize,
+                encoderLayer,
+                decoderLayer,
+                encodeWordIndexCache,
+                encodingSize,
+            }
+        );
+
+        // Assert
+        expect(word, 'The lazy brown [?]').to.equal(' dog');
+    }, 10000);
+
 
     it('Should remember a simple sentence', async function () {
         // Arrange

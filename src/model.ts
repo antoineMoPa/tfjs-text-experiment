@@ -290,20 +290,6 @@ export const buildTrainingData = async (
     };
 }
 
-type BuildModelArgs = {
-    vocabulary: Vocabulary,
-    trainingData: TrainingData,
-    verbose?: boolean,
-    level?: number,
-    /**
-     * Amount of tokens that the model is able to read in input
-     */
-    beforeSize: number,
-    encodingSize?: number
-    epochs?: number,
-    minitestText?: string,
-};
-
 const encodeWordIndex = (
     index: number,
     {
@@ -499,17 +485,22 @@ const genCache = () =>
         }
     });
 
+type BuildModelArgs = {
+    vocabulary: Vocabulary,
+    trainingData: TrainingData,
+    verbose?: boolean,
+    level?: number,
+    /**
+     * Amount of tokens that the model is able to read in input
+     */
+    beforeSize: number,
+    encodingSize?: number
+    epochs?: number,
+    minitestText?: string,
+};
 
 /**
  * buildModel
- *
- * Levels
- * With each level, the model grows in capacity. Smaller = lighter
- *
- * Levels:
- * 0: Able to remember 1 sentence
- * 1: Able to remember 2 long sentences
- *
  */
 export async function buildModel(
     {
@@ -614,17 +605,114 @@ export async function buildModel(
     const outputs = layerOutput;
     const wordPredictModel = tf.model({ inputs, outputs });
 
-    const alpha = 0.05;
+    const { encoderDecoder, encoderLayer, decoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
 
+    await trainModel({
+        wordPredictModel,
+        vocabulary,
+        trainingData,
+        verbose,
+        beforeSize,
+        encodingSize,
+        epochs,
+        minitestText,
+        encoderLayer,
+        decoderLayer,
+        encodeWordIndexCache,
+    });
+
+    return {
+        wordPredictModel,
+        encoderLayer,
+        decoderLayer,
+        encodeWordIndexCache,
+        encoderDecoder
+    };
+}
+
+type TrainModelArgs = {
+    wordPredictModel: tf.LayersModel;
+    vocabulary: Vocabulary;
+    trainingData: TrainingData;
+    verbose: boolean;
+    beforeSize: number;
+    encodingSize: number;
+    epochs: number;
+    minitestText?: string;
+    encodeWordIndexCache: WordIndexCache;
+    encoderLayer: tf.layers.Layer;
+    decoderLayer: tf.layers.Layer;
+    alpha?: number;
+};
+
+type TrainModelWithTextArgs = Omit<TrainModelArgs, 'trainingData'>
+    & { text: string };
+
+export const trainModelWithText = async ({
+    text,
+    vocabulary,
+    wordPredictModel,
+    verbose,
+    beforeSize,
+    encodingSize,
+    epochs,
+    minitestText,
+    encoderLayer,
+    decoderLayer,
+    encodeWordIndexCache,
+    alpha,
+}: TrainModelWithTextArgs) => {
+    alpha = alpha || 0.005;
+    const tokens = tokenize(text);
+
+    for (const t of tokens) {
+        if (vocabulary.words.indexOf(t) === -1) {
+            throw new Error(`Cannot train: word '${t}' is not in original vocabulary.`);
+        }
+    }
+
+    const trainingData = await buildTrainingData({
+        vocabulary,
+        text,
+        beforeSize,
+    });
+
+    await trainModel({
+        wordPredictModel,
+        vocabulary,
+        trainingData,
+        verbose,
+        beforeSize,
+        encodingSize,
+        epochs,
+        minitestText,
+        encoderLayer,
+        decoderLayer,
+        encodeWordIndexCache,
+        alpha
+    });
+}
+
+export const trainModel = async ({
+    wordPredictModel,
+    vocabulary,
+    trainingData,
+    verbose,
+    beforeSize,
+    encodingSize,
+    epochs,
+    minitestText,
+    encoderLayer,
+    decoderLayer,
+    encodeWordIndexCache,
+    alpha,
+}: TrainModelArgs) => {
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha),
         loss: 'categoricalCrossentropy',
     })
 
-    const { encoderDecoder, encoderLayer, decoderLayer } = await buildEncoderDecoder({ vocabulary, encodingSize });
-
     const trainOnBatch = async (inputs, outputs) => {
-
         const trainingInputs = inputs.map(
             tokenIndices =>
                 prepareModelInput({
@@ -637,7 +725,6 @@ export async function buildModel(
                     includeTimeStep: true
                 })
         );
-
 
         const trainingOutputs = outputs.map(
             tokenIndices =>
@@ -654,7 +741,6 @@ export async function buildModel(
 
         const concatenatedInput = tf.stack(trainingInputs);
         const concatenatedOutput = tf.stack(trainingOutputs);
-
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
@@ -689,14 +775,6 @@ export async function buildModel(
     const batchInputs = trainingData.inputs;
     const batchOutputs = trainingData.expectedOutputs;
     await trainOnBatch(batchInputs, batchOutputs);
-
-    return {
-        wordPredictModel,
-        encoderLayer,
-        decoderLayer,
-        encodeWordIndexCache,
-        encoderDecoder
-    };
 }
 
 type BuildModelFromTextArgs = {
