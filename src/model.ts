@@ -106,8 +106,8 @@ export function buildVocabulary(...texts: string[]): Vocabulary {
     tokens.push('[NULL]');
     let words: string[] = _.shuffle(_.uniq(tokens));
 
-    // Add null words to increase output space
-    words = [...words, ...Array(10).fill(null).map(() => '[nullword' + Math.random() + ']')];
+    // Add null words to increase output space and allow new words in a next training
+    words = [...words, ...Array(400).fill(null).map(() => '[nullword' + Math.random() + ']')];
 
     return { words };
 }
@@ -168,11 +168,13 @@ export function textToTensor(text: string, {
 export function tokenIndicesToTensor(tokenIndices: number[], {
     vocabulary,
     encoderLayer,
+    encodeWordIndexCache,
 }: {
-    vocabulary: Vocabulary
-    encoderLayer: tf.layers.Layer,
+    vocabulary: Vocabulary;
+    encoderLayer: tf.layers.Layer;
+    encodeWordIndexCache: WordIndexCache;
 }) {
-    const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
+    encodeWordIndexCache = encodeWordIndexCache || new LRU<string, tf.Tensor2D>({
         max: 1000,
         dispose(value: tf.Tensor) {
             value.dispose();
@@ -343,6 +345,7 @@ export function prepareModelInput({
     timestepOffset,
     mode,
     includeTimeStep,
+    encodeWordIndexCache
 }: {
     tokenIndices?: number[],
     vocabulary?: Vocabulary,
@@ -351,7 +354,8 @@ export function prepareModelInput({
     size?: number,
     timestepOffset: number,
     mode: 'onehot' | 'embedding',
-    includeTimeStep: boolean
+    includeTimeStep: boolean;
+    encodeWordIndexCache: WordIndexCache;
 }) {
     if (mode === 'onehot') {
         const oneHot = tokenIndices.map(index => wordIndexToOneHot(index, vocabulary));
@@ -376,6 +380,7 @@ export function prepareModelInput({
         const tensor = tokenIndicesToTensor(tokenIndices, {
             vocabulary,
             encoderLayer,
+            encodeWordIndexCache
         });
 
         if (includeTimeStep) {
@@ -479,7 +484,7 @@ export const loadModel = async (name: string) : Promise<{
 
 const genCache = () =>
     new LRU<string, tf.Tensor2D>({
-        max: 1000,
+        max: 5000,
         dispose(value: tf.Tensor) {
             value.dispose();
         }
@@ -648,6 +653,10 @@ type TrainModelArgs = {
 type TrainModelWithTextArgs = Omit<TrainModelArgs, 'trainingData'>
     & { text: string };
 
+/**
+ * trainModelWithText
+ * Note that this can mutate vocabulary and wordPredictModel
+ */
 export const trainModelWithText = async ({
     text,
     vocabulary,
@@ -667,7 +676,18 @@ export const trainModelWithText = async ({
 
     for (const t of tokens) {
         if (vocabulary.words.indexOf(t) === -1) {
-            throw new Error(`Cannot train: word '${t}' is not in original vocabulary.`);
+            const index = vocabulary.words.findIndex(
+                token =>
+                    token.startsWith('[nullword')
+            );
+
+            if (index > 0) {
+                console.log(`adding ${t} at position ${index}`);
+                vocabulary.words[index] = t;
+                continue;
+            }
+
+            throw new Error(`Cannot train: word '${t}' is not in original vocabulary and no space is left in output space.`);
         }
     }
 
@@ -708,9 +728,9 @@ export const trainModel = async ({
     alpha,
 }: TrainModelArgs) => {
     wordPredictModel.compile({
-        optimizer: tf.train.adamax(alpha),
+        optimizer: tf.train.adamax(alpha, 0.01, 0.9999),
         loss: 'categoricalCrossentropy',
-    })
+    });
 
     const trainOnBatch = async (inputs, outputs) => {
         const trainingInputs = inputs.map(
@@ -722,7 +742,8 @@ export const trainModel = async ({
                     encodingSize,
                     timestepOffset: 0,
                     mode: 'embedding',
-                    includeTimeStep: true
+                    includeTimeStep: true,
+                    encodeWordIndexCache,
                 })
         );
 
@@ -735,7 +756,8 @@ export const trainModel = async ({
                     encodingSize,
                     timestepOffset: beforeSize,
                     mode: OUTPUT_FORMAT,
-                    includeTimeStep: true
+                    includeTimeStep: true,
+                    encodeWordIndexCache,
                 })
         );
 
@@ -744,7 +766,7 @@ export const trainModel = async ({
 
         await wordPredictModel.fit(concatenatedInput, concatenatedOutput, {
             epochs,
-            batchSize: 50,
+            batchSize: 30,
             verbose: encodingSize >= 30 ? 1 : 0,
             shuffle: true,
             callbacks: {
@@ -807,9 +829,10 @@ export async function buildModelFromText({
     });
     const {
         wordPredictModel,
+        encoderDecoder,
         encoderLayer,
+        decoderLayer,
         encodeWordIndexCache,
-        decoderLayer
     } = await buildModel({
         vocabulary,
         trainingData,
@@ -825,6 +848,7 @@ export async function buildModelFromText({
         wordPredictModel,
         vocabulary,
         beforeSize,
+        encoderDecoder,
         encoderLayer,
         decoderLayer,
         encodeWordIndexCache
@@ -894,7 +918,8 @@ export const predict = async (before, {
         size: beforeSize,
         timestepOffset: 0,
         mode: 'embedding',
-        includeTimeStep: true
+        includeTimeStep: true,
+        encodeWordIndexCache
     })
 
     const stackedPredictionAndTimeStep = wordPredictModel.predict(tf.stack([input])) as Tensor;
@@ -919,7 +944,7 @@ export const predictUntilEnd = async (inputText, {
 }) => {
     // Test model
     const words = tokenize(inputText);
-    const MAX = 5000;
+    const MAX = 100;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
         const { word } = await predict(words.slice(-beforeSize), {

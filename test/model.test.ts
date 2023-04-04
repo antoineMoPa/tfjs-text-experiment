@@ -16,7 +16,15 @@ import {
     trainModelWithText
 } from '../src/model';
 
-import { _8Paragraphs, _4Paragraphs, _3Paragraphs, _2Paragraphs, _16Paragraphs } from './testText';
+import {
+    _1Paragraph,
+    _2Paragraphs,
+    _3Paragraphs,
+    _4Paragraphs,
+    _8Paragraphs,
+    _16Paragraphs,
+    otherParagraph
+} from './testText';
 
 describe('Model', async () => {
     it.skip('Should build a vocabulary', async () => {
@@ -31,7 +39,7 @@ describe('Model', async () => {
         expect(vocabulary.words).to.contain('[END]');
     });
 
-    it.only('Should remember a simple word', async function () {
+    it('Should remember a simple word', async function () {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -69,7 +77,7 @@ describe('Model', async () => {
         expect(word, 'The quick brown [?]').to.equal(' fox');
     }, 10000);
 
-    it.only('Should save a model', async function () {
+    it('Should save a model', async function () {
         // Arrange
         const text = 'the quick brown fox jumps over the lazy dog';
         const vocabulary = buildVocabulary(text);
@@ -98,7 +106,7 @@ describe('Model', async () => {
         });
     }, 10000);
 
-    it.only('Should load a model', async function () {
+    it('Should load a model', async function () {
         // Arrange
         const {
             wordPredictModel,
@@ -128,7 +136,7 @@ describe('Model', async () => {
         expect(word, 'The quick brown [?]').to.equal(' fox');
     }, 10000);
 
-    it.only('Should fit a model on new data', async function () {
+    it('Should fit a model on new data', async function () {
         // Arrange
         const {
             wordPredictModel,
@@ -297,27 +305,51 @@ describe('Model', async () => {
         expect(output).to.equal(text + '[END]');
     }, 20000);
 
-    it('Should remember an entire paragraph', async function() {
+    it.only('Should remember an entire paragraph', async function() {
         // Arrange
-        const text = 'Horses and humans interact in a wide variety of sport competitions and non-competitive recreational pursuits as well as in working activities such as police work, agriculture, entertainment, and therapy. Horses were historically used in warfare, from which a wide variety of riding and driving techniques developed, using many different styles of equipment and methods of control. Many products are derived from horses, including meat, milk, hide, hair, bone, and pharmaceuticals extracted from the urine of pregnant mares. Humans provide domesticated horses with food, water, and shelter as well as attention from specialists such as veterinarians and farriers.';
+        const text = _1Paragraph;
+        const encodingSize = 50;
 
+        // First, create and save a base model
         const {
             wordPredictModel,
             vocabulary,
             beforeSize,
             encoderLayer,
             decoderLayer,
+            encoderDecoder,
             encodeWordIndexCache,
         } = await buildModelFromText({
-            text,
+            text: _2Paragraphs,
             verbose: true,
             level: 1,
-            encodingSize: 30,
-            epochs: 25,
+            epochs: 2,
             beforeSize: 30,
+            encodingSize,
         });
 
-        console.log(beforeSize);
+        await serializeModel('wikiHorse', {
+            wordPredictModel,
+            encoderDecoder,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+        });
+
+        // ...Then, overfit on the first paragraph
+        await trainModelWithText({
+            text,
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 4,
+            alpha: 0.002
+        });
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
@@ -327,30 +359,49 @@ describe('Model', async () => {
             encoderLayer,
             decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 30,
+            encodingSize,
         })
+
 
         // Assert
         expect(output).to.equal(text + '[END]');
-    }, 100000);
+    }, 300000);
 
-    it('Should remember 2 paragraphs', async function() {
+
+    it.only('Should reload model and remember a different paragraph', async function() {
         // Arrange
-        const text = _2Paragraphs;
-
+        const text = otherParagraph;
         const {
             wordPredictModel,
-            vocabulary,
-            beforeSize,
             encoderLayer,
             decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
             encodeWordIndexCache,
-        } = await buildModelFromText({
+            encoderDecoder,
+        } = await loadModel('wikiHorse');
+
+        await trainModelWithText({
             text,
+            vocabulary,
+            wordPredictModel,
             verbose: true,
-            level: 1,
-            encodingSize: 50,
-            epochs: 15
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 4,
+            alpha: 0.004
+        });
+
+        await serializeModel('wikiHorse2', {
+            wordPredictModel,
+            encoderDecoder,
+            vocabulary,
+            beforeSize,
+            encodingSize,
         });
 
         // Act
@@ -360,7 +411,49 @@ describe('Model', async () => {
             beforeSize,
             encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 50,
+            encodingSize
+        });
+
+        // Assert
+        expect(output).to.equal((text + '[END]'));
+    }, 100000);
+
+    it('Should train on 2 previously seen paragraph', async function() {
+        // Arrange
+        const text = _2Paragraphs;
+
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+        } = await loadModel('wikiHorse');
+
+        await trainModelWithText({
+            text,
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 5,
+            alpha: 0.05,
+        });
+
+        // Act
+        const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer, decoderLayer,
+            encodeWordIndexCache,
+            encodingSize
         });
 
         // Assert
