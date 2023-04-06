@@ -27,12 +27,12 @@ export const tokenize = (text: string) => {
     const tokens = [];
     let cursor = 0;
     let lastTokenBeginCursor = 0;
-    const stopRegex = /[ \n\\.]/;
+    const stopRegex = /[ \n\\.\\-]/;
 
     while (cursor < text.length) {
         if (stopRegex.test(text[cursor])) {
             const char = text[cursor];
-            if (char === ' ' || char === '.' || char === '\n') {
+            if (char === ' ' || char === '.' || char === '\n' || char === '-') {
                 const token = text.slice(lastTokenBeginCursor, cursor);
                 tokens.push(token);
                 lastTokenBeginCursor = cursor;
@@ -107,7 +107,7 @@ export function buildVocabulary(...texts: string[]): Vocabulary {
     let words: string[] = _.shuffle(_.uniq(tokens));
 
     // Add null words to increase output space and allow new words in a next training
-    words = [...words, ...Array(400).fill(null).map(() => '[nullword' + Math.random() + ']')];
+    words = [...words, ...Array(10).fill(null).map(() => '[nullword' + Math.random() + ']')];
 
     return { words };
 }
@@ -491,17 +491,18 @@ const genCache = () =>
     });
 
 type BuildModelArgs = {
-    vocabulary: Vocabulary,
-    trainingData: TrainingData,
-    verbose?: boolean,
-    level?: number,
+    vocabulary: Vocabulary;
+    trainingData: TrainingData;
+    verbose?: boolean;
+    level?: number;
     /**
      * Amount of tokens that the model is able to read in input
      */
-    beforeSize: number,
+    beforeSize: number;
     encodingSize?: number
-    epochs?: number,
-    minitestText?: string,
+    epochs?: number;
+    alpha?: number;
+    minitestText?: string;
 };
 
 /**
@@ -516,6 +517,7 @@ export async function buildModel(
         beforeSize,
         encodingSize = 128,
         epochs = 25,
+        alpha,
         minitestText,
     }: BuildModelArgs
 ): Promise<{
@@ -624,6 +626,7 @@ export async function buildModel(
         encoderLayer,
         decoderLayer,
         encodeWordIndexCache,
+        alpha
     });
 
     return {
@@ -725,7 +728,7 @@ export const trainModel = async ({
     encoderLayer,
     decoderLayer,
     encodeWordIndexCache,
-    alpha,
+    alpha = 0.002,
 }: TrainModelArgs) => {
     wordPredictModel.compile({
         optimizer: tf.train.adamax(alpha, 0.01, 0.9999),
@@ -806,6 +809,7 @@ type BuildModelFromTextArgs = {
     encodingSize?: number;
     epochs?: number;
     beforeSize?: number;
+    alpha?: number
 };
 
 export async function buildModelFromText({
@@ -814,7 +818,8 @@ export async function buildModelFromText({
     level,
     encodingSize,
     epochs,
-    beforeSize
+    beforeSize,
+    alpha
 }: BuildModelFromTextArgs) {
     const LEVEL_TO_BEFORE_SIZE = {
         '0': 3,
@@ -841,6 +846,7 @@ export async function buildModelFromText({
         beforeSize,
         encodingSize,
         epochs,
+        alpha,
         minitestText: tokenize(text).slice(0, beforeSize).join(' ')
     });
 

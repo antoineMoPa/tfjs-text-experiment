@@ -305,25 +305,21 @@ describe('Model', async () => {
         expect(output).to.equal(text + '[END]');
     }, 20000);
 
-    it.only('Should remember an entire paragraph', async function() {
+    it.only('Should build a base model', async function() {
         // Arrange
-        const text = _1Paragraph;
         const encodingSize = 50;
 
-        // First, create and save a base model
         const {
             wordPredictModel,
             vocabulary,
             beforeSize,
-            encoderLayer,
-            decoderLayer,
             encoderDecoder,
-            encodeWordIndexCache,
         } = await buildModelFromText({
-            text: _2Paragraphs,
+            text: _8Paragraphs,
             verbose: true,
-            level: 1,
+            level: 2,
             epochs: 2,
+            alpha: 0.0001,
             beforeSize: 30,
             encodingSize,
         });
@@ -335,8 +331,21 @@ describe('Model', async () => {
             beforeSize,
             encodingSize,
         });
+    }, 200000);
 
-        // ...Then, overfit on the first paragraph
+    it.only('Should remember an entire paragraph', async function() {
+        // Arrange
+        const text = _1Paragraph;
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+        } = await loadModel('wikiHorse');
+
         await trainModelWithText({
             text,
             vocabulary,
@@ -361,7 +370,6 @@ describe('Model', async () => {
             encodeWordIndexCache,
             encodingSize,
         })
-
 
         // Assert
         expect(output).to.equal(text + '[END]');
@@ -393,7 +401,7 @@ describe('Model', async () => {
             encoderLayer,
             decoderLayer,
             epochs: 4,
-            alpha: 0.004
+            alpha: 0.002
         });
 
         await serializeModel('wikiHorse2', {
