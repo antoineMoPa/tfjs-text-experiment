@@ -256,11 +256,14 @@ describe('Model', async () => {
             text,
             verbose: true,
             level: 1,
-            encodingSize: 20
+            beforeSize: 5,
+            encodingSize: 20,
+            alpha: 0.008,
+            epochs: 10
         });
 
         // Act
-        const output = await predictUntilEnd("The horse has evolved over the past 45 to 55", {
+        const output = await predictUntilEnd("The horse has evolved over", {
             vocabulary,
             wordPredictModel,
             beforeSize,
@@ -287,7 +290,10 @@ describe('Model', async () => {
             text,
             verbose: false,
             level: 1,
-            encodingSize: 20
+            encodingSize: 20,
+            alpha: 0.008,
+            epochs: 10,
+            beforeSize: 5
         });
 
         // Act
@@ -305,7 +311,7 @@ describe('Model', async () => {
         expect(output).to.equal(text + '[END]');
     }, 20000);
 
-    it.only('Should build a base model', async function() {
+    it('Should build a base model', async function() {
         // Arrange
         const encodingSize = 50;
 
@@ -319,7 +325,7 @@ describe('Model', async () => {
             verbose: true,
             level: 2,
             epochs: 2,
-            alpha: 0.0001,
+            alpha: 0.0002,
             beforeSize: 30,
             encodingSize,
         });
@@ -333,7 +339,7 @@ describe('Model', async () => {
         });
     }, 200000);
 
-    it.only('Should remember an entire paragraph', async function() {
+    it('Should remember an entire paragraph', async function() {
         // Arrange
         const text = _1Paragraph;
         const {
@@ -376,7 +382,7 @@ describe('Model', async () => {
     }, 300000);
 
 
-    it.only('Should reload model and remember a different paragraph', async function() {
+    it('Should reload model and remember a different paragraph', async function() {
         // Arrange
         const text = otherParagraph;
         const {
@@ -426,7 +432,7 @@ describe('Model', async () => {
         expect(output).to.equal((text + '[END]'));
     }, 100000);
 
-    it('Should train on 2 previously seen paragraph', async function() {
+    it('Should remember 2 paragraph', async function() {
         // Arrange
         const text = _2Paragraphs;
 
@@ -450,8 +456,8 @@ describe('Model', async () => {
             encodeWordIndexCache,
             encoderLayer,
             decoderLayer,
-            epochs: 5,
-            alpha: 0.05,
+            epochs: 3,
+            alpha: 0.002,
         });
 
         // Act
@@ -475,18 +481,13 @@ describe('Model', async () => {
 
         const {
             wordPredictModel,
-            vocabulary,
-            beforeSize,
             encoderLayer,
             decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
             encodeWordIndexCache,
-        } = await buildModelFromText({
-            text,
-            verbose: true,
-            level: 1,
-            encodingSize: 50,
-            epochs: 15
-        });
+        } = await loadModel('wikiHorse');
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
@@ -495,7 +496,7 @@ describe('Model', async () => {
             beforeSize,
             encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 50,
+            encodingSize
         });
 
         // Assert
@@ -508,18 +509,13 @@ describe('Model', async () => {
 
         const {
             wordPredictModel,
-            vocabulary,
-            beforeSize,
             encoderLayer,
             decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
             encodeWordIndexCache,
-        } = await buildModelFromText({
-            text,
-            verbose: true,
-            level: 1,
-            encodingSize: 50,
-            epochs: 15
-        });
+        } = await loadModel('wikiHorse');
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
@@ -528,7 +524,7 @@ describe('Model', async () => {
             beforeSize,
             encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 50,
+            encodingSize
         });
 
         // Assert
@@ -541,18 +537,13 @@ describe('Model', async () => {
 
         const {
             wordPredictModel,
-            vocabulary,
-            beforeSize,
             encoderLayer,
             decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
             encodeWordIndexCache,
-        } = await buildModelFromText({
-            text,
-            verbose: true,
-            level: 1,
-            encodingSize: 50,
-            epochs: 20
-        });
+        } = await loadModel('wikiHorse');
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
@@ -561,7 +552,7 @@ describe('Model', async () => {
             beforeSize,
             encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 50,
+            encodingSize
         });
 
         // Assert
@@ -574,18 +565,13 @@ describe('Model', async () => {
 
         const {
             wordPredictModel,
-            vocabulary,
-            beforeSize,
             encoderLayer,
             decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
             encodeWordIndexCache,
-        } = await buildModelFromText({
-            text,
-            verbose: true,
-            level: 1,
-            encodingSize: 50,
-            epochs: 5
-        });
+        } = await loadModel('wikiHorse');
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
@@ -594,7 +580,7 @@ describe('Model', async () => {
             beforeSize,
             encoderLayer, decoderLayer,
             encodeWordIndexCache,
-            encodingSize: 50,
+            encodingSize
         });
 
         // Assert

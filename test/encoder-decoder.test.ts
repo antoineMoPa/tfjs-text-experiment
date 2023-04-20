@@ -9,7 +9,7 @@ import {
 
 import { buildEncoderDecoder } from '../src/encoderDecoder';
 import { describe, it, expect } from 'vitest';
-import { twoParagraphs } from './testText';
+import { _2Paragraphs } from './testText';
 
 describe('Vocabulary EncoderDecoder', async () => {
     it('Encodes a token', async function () {
@@ -55,7 +55,7 @@ describe('Vocabulary EncoderDecoder', async () => {
 
     it('Encodes a large vocabulary', async function () {
         // Arrange
-        const text = twoParagraphs;
+        const text = _2Paragraphs;
         const vocabulary = buildVocabulary(text);
         const { encoderDecoder } = await buildEncoderDecoder({ vocabulary, encodingSize: 30 });
 

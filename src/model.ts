@@ -950,7 +950,7 @@ export const predictUntilEnd = async (inputText, {
 }) => {
     // Test model
     const words = tokenize(inputText);
-    const MAX = 100;
+    const MAX = 1000;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
         const { word } = await predict(words.slice(-beforeSize), {
