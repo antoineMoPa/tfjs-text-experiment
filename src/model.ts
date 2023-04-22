@@ -107,7 +107,7 @@ export function buildVocabulary(...texts: string[]): Vocabulary {
     let words: string[] = _.shuffle(_.uniq(tokens));
 
     // Add null words to increase output space and allow new words in a next training
-    words = [...words, ...Array(10).fill(null).map(() => '[nullword' + Math.random() + ']')];
+    words = [...words, ...Array(20).fill(null).map(() => '[nullword' + Math.random() + ']')];
 
     return { words };
 }
@@ -410,6 +410,7 @@ const minitest = async (inputText, {
     encodeWordIndexCache,
     encodingSize
 }) => {
+    return;
     const output = await predictUntilEnd(inputText, {
         vocabulary,
         wordPredictModel,
@@ -950,7 +951,7 @@ export const predictUntilEnd = async (inputText, {
 }) => {
     // Test model
     const words = tokenize(inputText);
-    const MAX = 1000;
+    const MAX = 3000;
     let lastword = null
     for (let i = 0; i < MAX && lastword !== '[END]'; i++) {
         const { word } = await predict(words.slice(-beforeSize), {
@@ -964,6 +965,10 @@ export const predictUntilEnd = async (inputText, {
         });
         words.push(word);
         lastword = word;
+
+        if (i % 100 === 0) {
+            console.log(words.join(''));
+        }
     }
 
     return words.join('');

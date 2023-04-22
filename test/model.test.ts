@@ -313,7 +313,7 @@ describe('Model', async () => {
 
     it('Should build a base model', async function() {
         // Arrange
-        const encodingSize = 50;
+        const encodingSize = 60;
 
         const {
             wordPredictModel,
@@ -321,10 +321,10 @@ describe('Model', async () => {
             beforeSize,
             encoderDecoder,
         } = await buildModelFromText({
-            text: _8Paragraphs,
+            text: _16Paragraphs,
             verbose: true,
             level: 2,
-            epochs: 2,
+            epochs: 1,
             alpha: 0.0002,
             beforeSize: 30,
             encodingSize,
@@ -456,7 +456,7 @@ describe('Model', async () => {
             encodeWordIndexCache,
             encoderLayer,
             decoderLayer,
-            epochs: 3,
+            epochs: 6,
             alpha: 0.002,
         });
 
@@ -489,6 +489,20 @@ describe('Model', async () => {
             encodeWordIndexCache,
         } = await loadModel('wikiHorse');
 
+        await trainModelWithText({
+            text,
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 6,
+            alpha: 0.002,
+        });
+
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
@@ -516,6 +530,20 @@ describe('Model', async () => {
             encodingSize,
             encodeWordIndexCache,
         } = await loadModel('wikiHorse');
+
+        await trainModelWithText({
+            text,
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 6,
+            alpha: 0.002,
+        });
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
@@ -545,6 +573,20 @@ describe('Model', async () => {
             encodeWordIndexCache,
         } = await loadModel('wikiHorse');
 
+        await trainModelWithText({
+            text,
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 6,
+            alpha: 0.002,
+        });
+
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
@@ -572,6 +614,20 @@ describe('Model', async () => {
             encodingSize,
             encodeWordIndexCache,
         } = await loadModel('wikiHorse');
+
+        await trainModelWithText({
+            text,
+            vocabulary,
+            wordPredictModel,
+            verbose: true,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+            encoderLayer,
+            decoderLayer,
+            epochs: 6,
+            alpha: 0.002,
+        });
 
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
