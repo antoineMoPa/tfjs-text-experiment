@@ -135,7 +135,7 @@ export function textToTensor(text: string, {
     maxLength?: number
 }) {
     const encodeWordIndexCache = new LRU<string, tf.Tensor2D>({
-        max: 1000,
+        max: 3000,
         dispose(value: tf.Tensor) {
             value.dispose();
         }
@@ -423,7 +423,7 @@ const minitest = async (inputText, {
     console.log(`minitest: ${output}`)
 };
 
-export const serializeModel = async (name: string, {
+export const saveModel = async (name: string, {
     wordPredictModel,
     encoderDecoder,
     vocabulary,
@@ -947,7 +947,17 @@ export const predictUntilEnd = async (inputText, {
     encoderLayer,
     decoderLayer,
     encodeWordIndexCache,
-    encodingSize
+    encodingSize,
+    continousLogging
+}: {
+    vocabulary: Vocabulary
+    wordPredictModel: tf.LayersModel;
+    beforeSize: number;
+    encoderLayer: tf.layers.Layer;
+    decoderLayer: tf.layers.Layer;
+    encodeWordIndexCache: WordIndexCache;
+    encodingSize: number;
+    continousLogging?: boolean;
 }) => {
     // Test model
     const words = tokenize(inputText);
@@ -966,9 +976,7 @@ export const predictUntilEnd = async (inputText, {
         words.push(word);
         lastword = word;
 
-        if (i % 100 === 0) {
-            console.log(words.join(''));
-        }
+        continousLogging && process.stdout.write('\n\n\n\n' + words.join('') + '\n');
     }
 
     return words.join('');

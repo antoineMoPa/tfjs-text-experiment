@@ -6,7 +6,8 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc --project tsconfig.json --outDir dist",
-        "test": "vitest",
+        "test": "vitest --no-threads --reporter=basic",
+        "test:debug": "vitest --inspect-brk --no-threads",
         "lint": "eslint . --ext .ts",
         "purgeVocabulary": "rm -rf data/vocabulary.json",
         "purgeTrainingData": "rm -rf data/trainingData.json",

@@ -11,7 +11,7 @@ import {
     predictUntilEnd,
     buildModelFromText,
     CORPUS_PATH,
-    serializeModel,
+    saveModel,
     loadModel,
     trainModelWithText
 } from '../src/model';
@@ -97,7 +97,7 @@ describe('Model', async () => {
             epochs: 30,
         });
 
-        await serializeModel('theQuickBrownFox', {
+        await saveModel('theQuickBrownFox', {
             wordPredictModel,
             encoderDecoder,
             vocabulary,
@@ -330,7 +330,7 @@ describe('Model', async () => {
             encodingSize,
         });
 
-        await serializeModel('wikiHorse', {
+        await saveModel('wikiHorse', {
             wordPredictModel,
             encoderDecoder,
             vocabulary,
@@ -410,7 +410,7 @@ describe('Model', async () => {
             alpha: 0.002
         });
 
-        await serializeModel('wikiHorse2', {
+        await saveModel('wikiHorse2', {
             wordPredictModel,
             encoderDecoder,
             vocabulary,
@@ -613,6 +613,7 @@ describe('Model', async () => {
             beforeSize,
             encodingSize,
             encodeWordIndexCache,
+            encoderDecoder
         } = await loadModel('wikiHorse');
 
         await trainModelWithText({
@@ -629,6 +630,14 @@ describe('Model', async () => {
             alpha: 0.002,
         });
 
+        await saveModel('wikiHorse16', {
+            wordPredictModel,
+            encoderDecoder,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+        });
+
         // Act
         const output = await predictUntilEnd(tokenize(text).slice(0, beforeSize).join(''), {
             vocabulary,
@@ -642,6 +651,33 @@ describe('Model', async () => {
         // Assert
         expect(output).to.equal((text + '[END]'));
     }, 1000000);
+
+    it('Tests 16 paragraph model', async function() {
+        // Arrange
+        const {
+            wordPredictModel,
+            encoderLayer,
+            decoderLayer,
+            vocabulary,
+            beforeSize,
+            encodingSize,
+            encodeWordIndexCache,
+        } = await loadModel('wikiHorse16');
+
+        // Act
+        const output = await predictUntilEnd('horses are', {
+            vocabulary,
+            wordPredictModel,
+            beforeSize,
+            encoderLayer, decoderLayer,
+            encodeWordIndexCache,
+            encodingSize,
+            continousLogging: true
+        });
+
+        console.log(output);
+    }, 1000000);
+
 
     it.skip('Should parse and entire article and output horse information.', async function() {
         // Arrange
